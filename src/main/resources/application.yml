@@ -1,0 +1,52 @@
+spring:
+  main:
+    web-application-type: none
+  application:
+    name: certificate-manager
+  cloud:
+    vault:
+      uri: http://localhost:8200
+      token: hvs.germtgBJutoYRbWNj1BKjA6l
+      authentication: token
+application:
+  vault:
+    pki-mount: pki-client
+    secret-path: node-net/client
+  client:
+    key-store: /home/developer/Downloads/managementNode/docker/keystore.jks # path to MTLS client keystore
+    trust-store: /home/developer/Downloads/managementNode/docker/truststore.jks
+    key-store-password: changeit # MTLS client keystore password
+    trust-store-password: changeit
+    key-store-type: JKS
+  oauth2:
+    token-uri: https://localhost:8443/realms/mng-node/protocol/openid-connect/token
+    client-id: MANAGEMENT_NODE_CLIENT
+  management-node:
+    base-url: https://localhost:8090
+  scheduling:
+    certificate-manager:
+      fixed-rate: 60000 # 1 minute in milliseconds
+  certificate:
+    renewal-threshold-percentage: 10
+    key-size: 2048 # 2048 (standard), 4096 (higher security, slower TLS handshake)
+    subject:
+      # Example values (uncomment and adjust as needed):
+      country: UK
+      state: South Yorkshire
+      locality: Sheffield
+      organization: Acme Digital Solutions Ltd
+      organizational-unit: Platform Engineering
+      common-name: api.acme-digital.co.uk
+      # Alternative Names (DNS), comma-separated
+      alt-names: api.acme-digital.co.uk,api.internal.acme-digital.co.uk
+    intermediate:
+      min-valid-days: 14
+
+# Logging Configuration
+logging:
+  level:
+    org.springframework.security: DEBUG
+    uk.gov.dbt.ndtp.ia.node.management: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [%X{clientId}] - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [%X{clientId}] - %msg%n"
