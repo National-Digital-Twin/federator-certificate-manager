@@ -6,18 +6,14 @@
 
 package uk.gov.dbt.ndtp.federator.certificate.manager.service.pki;
 
+import static org.junit.jupiter.api.Assertions.*;
+
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import uk.gov.dbt.ndtp.federator.certificate.manager.exception.PkiException;
 import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.CreateCsrRequestDTO;
 import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.CreateCsrResponseDTO;
 import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.CreateKeyResponseDTO;
-import uk.gov.dbt.ndtp.federator.certificate.manager.service.pki.cryptography.PemUtil;
-
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.util.List;
-
-import static org.junit.jupiter.api.Assertions.*;
 
 class PkiServiceTest {
 

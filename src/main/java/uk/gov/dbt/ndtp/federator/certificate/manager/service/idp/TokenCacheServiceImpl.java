@@ -81,7 +81,7 @@ public class TokenCacheServiceImpl implements TokenCacheService {
             }
             return response.getAccessToken();
         } catch (Exception e) {
-            log.error("Failed to refresh token: {}", e.getMessage());
+            log.error("Failed to refresh token", e);
             // Invalidate cache on failure to ensure next getToken() tries again
             Cache cache = cacheManager.getCache(CacheConfig.TOKEN_CACHE);
             if (cache != null) {

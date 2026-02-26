@@ -15,12 +15,10 @@ import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import java.util.Collections;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -58,7 +56,10 @@ class VaultSecretProviderImplTest {
     void setUp() {
         vaultSecretProvider = new VaultSecretProviderImpl(vaultTemplate, BASE_PATH);
         when(vaultTemplate.opsForSys()).thenReturn(sysOps);
-        when(sysOps.getMounts()).thenReturn(Collections.emptyMap());
+        // Default: mount exists
+        when(sysOps.getMounts())
+                .thenReturn(java.util.Map.of(
+                        "node-net/", VaultMount.builder().type("kv").build()));
         when(vaultTemplate.opsForVersionedKeyValue("node-net")).thenReturn(kvOps);
     }
 
@@ -71,14 +72,17 @@ class VaultSecretProviderImplTest {
 
         vaultSecretProvider.persistKeyPair(dto);
 
-        // Verify mount is attempted and KV put is executed on relative path
-        verify(sysOps, times(1)).mount(eq("node-net"), any(VaultMount.class));
+        // Verify mount is checked but NOT attempted (read-only)
+        verify(sysOps, times(1)).getMounts();
+        verify(sysOps, times(0)).mount(any(), any());
         verify(kvOps, times(1)).put(eq("client/keypair"), anyMap());
     }
 
     @Test
     void persistKeyPair_mountAlreadyExists() {
-        when(sysOps.getMounts()).thenReturn(java.util.Map.of("node-net/", VaultMount.builder().type("kv").build()));
+        when(sysOps.getMounts())
+                .thenReturn(java.util.Map.of(
+                        "node-net/", VaultMount.builder().type("kv").build()));
 
         CreateKeyResponseDTO dto = CreateKeyResponseDTO.builder()
                 .publicKeyPem("public")
@@ -96,14 +100,16 @@ class VaultSecretProviderImplTest {
     void constructor_edgeCases() {
         // Test split logic in constructor
         VaultSecretProviderImpl provider1 = new VaultSecretProviderImpl(vaultTemplate, "simplemount");
-        // baseRelative is empty, relativeSecretPath should be "keypair"
-        // Need to use reflection or check behavior to verify, but here we just ensure no crash
-        
+
+        when(sysOps.getMounts())
+                .thenReturn(java.util.Map.of(
+                        "simplemount/", VaultMount.builder().type("kv").build()));
+
         CreateKeyResponseDTO dto = CreateKeyResponseDTO.builder()
                 .publicKeyPem("public")
                 .privateKeyPem("private")
                 .build();
-                
+
         when(vaultTemplate.opsForVersionedKeyValue("simplemount")).thenReturn(kvOps);
         provider1.persistKeyPair(dto);
         verify(kvOps, times(1)).put(eq("keypair"), anyMap());
@@ -116,11 +122,11 @@ class VaultSecretProviderImplTest {
                 .privateKeyPem("private")
                 .build();
 
-        doThrow(new VaultException("Vault down")).when(kvOps).put(eq("client/keypair"), anyMap());
+        doThrow(new RuntimeException("Vault down")).when(kvOps).put(eq("client/keypair"), anyMap());
 
         assertThrows(VaultException.class, () -> vaultSecretProvider.persistKeyPair(dto));
 
-        verify(sysOps, times(1)).mount(eq("node-net"), any(VaultMount.class));
+        verify(sysOps, times(1)).getMounts();
         verify(kvOps, times(1)).put(eq("client/keypair"), anyMap());
     }
 
@@ -142,7 +148,7 @@ class VaultSecretProviderImplTest {
     @Test
     void persistCertificate_success() {
         vaultSecretProvider.persistCertificate("-----BEGIN CERTIFICATE-----\n...\n-----END CERTIFICATE-----\n");
-        verify(sysOps, times(1)).mount(eq("node-net"), any(VaultMount.class));
+        verify(sysOps, times(1)).getMounts();
         verify(kvOps, times(1)).put(eq("client/certificate"), anyMap());
     }
 
@@ -150,14 +156,14 @@ class VaultSecretProviderImplTest {
     void persistCaChain_success() {
         java.util.List<String> chain = java.util.List.of("cert1", "cert2");
         vaultSecretProvider.persistCaChain(chain);
-        verify(sysOps, times(1)).mount(eq("node-net"), any(VaultMount.class));
+        verify(sysOps, times(1)).getMounts();
         verify(kvOps, times(1)).put(eq("client/ca-chain"), anyMap());
     }
 
     @Test
     void persistIntermediateCa_success() {
         vaultSecretProvider.persistIntermediateCa("-----BEGIN CERTIFICATE-----\nINT\n-----END CERTIFICATE-----\n");
-        verify(sysOps, times(1)).mount(eq("node-net"), any(VaultMount.class));
+        verify(sysOps, times(1)).getMounts();
         verify(kvOps, times(1)).put(eq("client/intermediate-ca"), anyMap());
     }
 
@@ -187,5 +193,65 @@ class VaultSecretProviderImplTest {
         when(kvOps.get("client/intermediate-ca")).thenThrow(new RuntimeException("read failed"));
 
         assertThrows(VaultException.class, () -> vaultSecretProvider.getIntermediateCa());
+    }
+
+    @Test
+    void persistSecret_success() {
+        Map<String, String> data = Map.of("password", "secret123");
+        vaultSecretProvider.persistSecret("test-secret", data);
+        verify(kvOps).put(("client/test-secret"), (data));
+    }
+
+    @Test
+    void getSecret_success() {
+        Versioned<Map<String, Object>> versioned = mock(Versioned.class);
+        Map<String, Object> data = Map.of("password", "secret123");
+        when(versioned.getData()).thenReturn(data);
+        when(kvOps.get("client/test-secret")).thenReturn(versioned);
+
+        Map<String, Object> result = vaultSecretProvider.getSecret("test-secret");
+
+        assertEquals(data, result);
+        verify(kvOps).get("client/test-secret");
+    }
+
+    @Test
+    void getSecret_notFound() {
+        when(kvOps.get("client/test-secret")).thenReturn(null);
+        Map<String, Object> result = vaultSecretProvider.getSecret("test-secret");
+        assertNull(result);
+    }
+
+    @Test
+    void getKeyPair_success() {
+        Versioned<Map<String, Object>> versioned = mock(Versioned.class);
+        when(versioned.getData())
+                .thenReturn(Map.of(
+                        "publicKey", "pub-pem",
+                        "privateKey", "priv-pem"));
+        when(kvOps.get("client/keypair")).thenReturn(versioned);
+
+        CreateKeyResponseDTO result = vaultSecretProvider.getKeyPair();
+
+        assertNotNull(result);
+        assertEquals("pub-pem", result.getPublicKeyPem());
+        assertEquals("priv-pem", result.getPrivateKeyPem());
+    }
+
+    @Test
+    void getCaChain_success() {
+        Versioned<Map<String, Object>> versioned = mock(Versioned.class);
+        String chain = new StringBuilder()
+                .append("-----BEGIN CERTIFICATE-----\nC1\n-----END CERTIFICATE-----\n")
+                .append("-----BEGIN CERTIFICATE-----\nC2\n-----END CERTIFICATE-----")
+                .toString();
+        when(versioned.getData()).thenReturn(Map.of("chain", chain));
+        when(kvOps.get("client/ca-chain")).thenReturn(versioned);
+
+        java.util.List<String> result = vaultSecretProvider.getCaChain();
+
+        assertEquals(2, result.size());
+        assertEquals("-----BEGIN CERTIFICATE-----\nC1\n-----END CERTIFICATE-----\n", result.get(0));
+        assertEquals("-----BEGIN CERTIFICATE-----\nC2\n-----END CERTIFICATE-----\n", result.get(1));
     }
 }

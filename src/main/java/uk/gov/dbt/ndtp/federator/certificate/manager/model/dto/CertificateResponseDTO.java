@@ -18,8 +18,8 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-public class CertificateResponse {
+public class CertificateResponseDTO {
     private String certificate;
     private String caChain;
-    private CertificateInfo info;
+    private CertificateInfoDTO info;
 }

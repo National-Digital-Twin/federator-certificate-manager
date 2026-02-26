@@ -6,11 +6,11 @@
 
 package uk.gov.dbt.ndtp.federator.certificate.manager;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
-
-import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 
 @SpringBootTest(classes = ApplicationRunner.class)
 @ActiveProfiles("test")
@@ -23,6 +23,6 @@ class ApplicationRunnerTest {
 
     @Test
     void mainMethodRuns() {
-        assertDoesNotThrow(() -> ApplicationRunner.main(new String[]{"--spring.main.web-application-type=none"}));
+        assertDoesNotThrow(() -> ApplicationRunner.main(new String[] {"--spring.main.web-application-type=none"}));
     }
 }

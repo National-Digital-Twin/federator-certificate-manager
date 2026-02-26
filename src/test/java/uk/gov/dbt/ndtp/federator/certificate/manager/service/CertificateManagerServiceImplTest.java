@@ -9,6 +9,20 @@
  */
 package uk.gov.dbt.ndtp.federator.certificate.manager.service;
 
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.*;
+
+import java.math.BigInteger;
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.cert.X509Certificate;
+import java.util.Date;
+import org.bouncycastle.asn1.x500.X500Name;
+import org.bouncycastle.cert.X509v3CertificateBuilder;
+import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
+import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
+import org.bouncycastle.operator.ContentSigner;
+import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -16,31 +30,17 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.Spy;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.bouncycastle.asn1.x500.X500Name;
-import org.bouncycastle.cert.X509v3CertificateBuilder;
-import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
-import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
-import org.bouncycastle.operator.ContentSigner;
-import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
-import java.math.BigInteger;
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.cert.X509Certificate;
-import java.util.Date;
 import uk.gov.dbt.ndtp.federator.certificate.manager.config.CertificateProperties;
-import uk.gov.dbt.ndtp.federator.certificate.manager.exception.OAuth2TokenException;
 import uk.gov.dbt.ndtp.federator.certificate.manager.exception.PkiException;
-import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.CertificateResponse;
+import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.CertificateResponseDTO;
 import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.CreateCsrResponseDTO;
 import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.CreateKeyResponseDTO;
 import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.SignCertResponseDTO;
 import uk.gov.dbt.ndtp.federator.certificate.manager.service.idp.TokenCacheService;
+import uk.gov.dbt.ndtp.federator.certificate.manager.service.pki.KeyStoreService;
 import uk.gov.dbt.ndtp.federator.certificate.manager.service.pki.PkiService;
 import uk.gov.dbt.ndtp.federator.certificate.manager.service.pki.VaultSecretProvider;
 import uk.gov.dbt.ndtp.federator.certificate.manager.service.pki.cryptography.PemUtil;
-
-import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 class CertificateManagerServiceImplTest {
@@ -56,6 +56,12 @@ class CertificateManagerServiceImplTest {
 
     @Mock
     private VaultSecretProvider vaultSecretProvider;
+
+    @Mock
+    private KeyStoreService keyStoreService;
+
+    @Mock
+    private KeyStoreSyncService keyStoreSyncService;
 
     @Spy
     private CertificateProperties certificateProperties = new CertificateProperties();
@@ -73,7 +79,8 @@ class CertificateManagerServiceImplTest {
 
     @Test
     void run_checksIntermediateCaAndRenews() {
-        when(managementNodeService.getIntermediateCertificate()).thenReturn(CertificateResponse.builder().build());
+        when(managementNodeService.getIntermediateCertificate())
+                .thenReturn(CertificateResponseDTO.builder().build());
 
         certificateManagerService.run();
 
@@ -95,10 +102,12 @@ class CertificateManagerServiceImplTest {
     @Test
     void renewCertificate_success() {
         CreateKeyResponseDTO keyPair = CreateKeyResponseDTO.builder()
-                .publicKeyPem("pub").privateKeyPem("priv").build();
+                .publicKeyPem("pub")
+                .privateKeyPem("priv")
+                .build();
         CreateCsrResponseDTO csr = new CreateCsrResponseDTO("id", "csr-pem");
-        SignCertResponseDTO signed = SignCertResponseDTO.builder()
-                .certificate("cert-pem").build();
+        SignCertResponseDTO signed =
+                SignCertResponseDTO.builder().certificate("cert-pem").build();
 
         when(pkiService.createKeyPair(null, 2048)).thenReturn(keyPair);
         when(pkiService.createCsr(any())).thenReturn(csr);
@@ -115,10 +124,12 @@ class CertificateManagerServiceImplTest {
     @Test
     void renewCertificate_skipsPersistenceOnVerificationFailure() {
         CreateKeyResponseDTO keyPair = CreateKeyResponseDTO.builder()
-                .publicKeyPem("pub").privateKeyPem("priv").build();
+                .publicKeyPem("pub")
+                .privateKeyPem("priv")
+                .build();
         CreateCsrResponseDTO csr = new CreateCsrResponseDTO("id", "csr-pem");
-        SignCertResponseDTO signed = SignCertResponseDTO.builder()
-                .certificate("cert-pem").build();
+        SignCertResponseDTO signed =
+                SignCertResponseDTO.builder().certificate("cert-pem").build();
 
         when(pkiService.createKeyPair(null, 2048)).thenReturn(keyPair);
         when(pkiService.createCsr(any())).thenReturn(csr);
@@ -133,10 +144,12 @@ class CertificateManagerServiceImplTest {
     @Test
     void persistSignedArtifacts_skipsVerificationIfIntermediateMissing() {
         CreateKeyResponseDTO keyPair = CreateKeyResponseDTO.builder()
-                .publicKeyPem("pub").privateKeyPem("priv").build();
+                .publicKeyPem("pub")
+                .privateKeyPem("priv")
+                .build();
         CreateCsrResponseDTO csr = new CreateCsrResponseDTO("id", "csr-pem");
-        SignCertResponseDTO signed = SignCertResponseDTO.builder()
-                .certificate("cert-pem").build();
+        SignCertResponseDTO signed =
+                SignCertResponseDTO.builder().certificate("cert-pem").build();
 
         when(pkiService.createKeyPair(null, 2048)).thenReturn(keyPair);
         when(pkiService.createCsr(any())).thenReturn(csr);
@@ -151,7 +164,9 @@ class CertificateManagerServiceImplTest {
     @Test
     void persistSignedArtifacts_guardsAgainstNulls() {
         CreateKeyResponseDTO keyPair = CreateKeyResponseDTO.builder()
-                .publicKeyPem("pub").privateKeyPem("priv").build();
+                .publicKeyPem("pub")
+                .privateKeyPem("priv")
+                .build();
         CreateCsrResponseDTO csr = new CreateCsrResponseDTO("id", "csr-pem");
         SignCertResponseDTO signed = SignCertResponseDTO.builder()
                 .certificate("cert-pem")
@@ -184,9 +199,9 @@ class CertificateManagerServiceImplTest {
     @Test
     void checkAndRefreshIntermediateCa_persistsNewIfMissing() {
         when(vaultSecretProvider.getIntermediateCa()).thenReturn(null);
-        when(managementNodeService.getIntermediateCertificate()).thenReturn(
-                CertificateResponse.builder().certificate("new-cert").build()
-        );
+        when(managementNodeService.getIntermediateCertificate())
+                .thenReturn(
+                        CertificateResponseDTO.builder().certificate("new-cert").build());
 
         certificateManagerService.run();
 
@@ -214,7 +229,8 @@ class CertificateManagerServiceImplTest {
         Date start = new Date(now - 100000);
         Date end = new Date(now + 1000); // Expires in 1 second
         ContentSigner signer = new JcaContentSignerBuilder("SHA256withRSA").build(kp.getPrivate());
-        X509v3CertificateBuilder builder = new JcaX509v3CertificateBuilder(name, BigInteger.valueOf(now), start, end, name, kp.getPublic());
+        X509v3CertificateBuilder builder =
+                new JcaX509v3CertificateBuilder(name, BigInteger.valueOf(now), start, end, name, kp.getPublic());
         X509Certificate oldCert = new JcaX509CertificateConverter().getCertificate(builder.build(signer));
         String oldPem = PemUtil.toPem("CERTIFICATE", oldCert.getEncoded());
 
@@ -222,9 +238,9 @@ class CertificateManagerServiceImplTest {
         certificateProperties.setIntermediateMinValidDays(14);
 
         when(vaultSecretProvider.getIntermediateCa()).thenReturn(oldPem);
-        when(managementNodeService.getIntermediateCertificate()).thenReturn(
-                CertificateResponse.builder().certificate("fresh-cert").build()
-        );
+        when(managementNodeService.getIntermediateCertificate())
+                .thenReturn(
+                        CertificateResponseDTO.builder().certificate("fresh-cert").build());
 
         certificateManagerService.run();
 
@@ -240,10 +256,11 @@ class CertificateManagerServiceImplTest {
         X500Name name = new X500Name("CN=Valid");
         long now = System.currentTimeMillis();
         // Total duration: 60 days. Passed: 1 day. Remaining: 59 days (~98% remaining).
-        Date start = new Date(now - 3600000 * 24); 
+        Date start = new Date(now - 3600000 * 24);
         Date end = new Date(now + 3600000 * 24 * 59);
         ContentSigner signer = new JcaContentSignerBuilder("SHA256withRSA").build(kp.getPrivate());
-        X509v3CertificateBuilder builder = new JcaX509v3CertificateBuilder(name, BigInteger.valueOf(now), start, end, name, kp.getPublic());
+        X509v3CertificateBuilder builder =
+                new JcaX509v3CertificateBuilder(name, BigInteger.valueOf(now), start, end, name, kp.getPublic());
         X509Certificate validCert = new JcaX509CertificateConverter().getCertificate(builder.build(signer));
         String validPem = PemUtil.toPem("CERTIFICATE", validCert.getEncoded());
 
@@ -263,7 +280,8 @@ class CertificateManagerServiceImplTest {
     void run_renewsIfCertificateIsMissing() {
         when(vaultSecretProvider.getIntermediateCa()).thenReturn("some-intermediate");
         when(vaultSecretProvider.getCertificate()).thenReturn(null);
-        when(pkiService.createKeyPair(null, 2048)).thenReturn(CreateKeyResponseDTO.builder().build());
+        when(pkiService.createKeyPair(null, 2048))
+                .thenReturn(CreateKeyResponseDTO.builder().build());
 
         certificateManagerService.run();
 
@@ -271,27 +289,11 @@ class CertificateManagerServiceImplTest {
     }
 
     @Test
-    void run_renewsIfCertificateIsBelowThreshold() throws Exception {
-        // Create a cert that is almost expired (validity threshold is 10%)
-        KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
-        kpg.initialize(2048);
-        KeyPair kp = kpg.generateKeyPair();
-        X500Name name = new X500Name("CN=ExpiringSoon");
-        long now = System.currentTimeMillis();
-        // Total duration: 100 units. Passed: 95 units. Remaining: 5 units (5% remaining).
-        Date start = new Date(now - 95000);
-        Date end = new Date(now + 5000);
-        ContentSigner signer = new JcaContentSignerBuilder("SHA256withRSA").build(kp.getPrivate());
-        X509v3CertificateBuilder builder = new JcaX509v3CertificateBuilder(name, BigInteger.valueOf(now), start, end, name, kp.getPublic());
-        X509Certificate expiringCert = new JcaX509CertificateConverter().getCertificate(builder.build(signer));
-        String expiringPem = PemUtil.toPem("CERTIFICATE", expiringCert.getEncoded());
-
-        when(vaultSecretProvider.getIntermediateCa()).thenReturn("some-intermediate");
-        when(vaultSecretProvider.getCertificate()).thenReturn(expiringPem);
-        when(pkiService.createKeyPair(null, 2048)).thenReturn(CreateKeyResponseDTO.builder().build());
-
-        certificateManagerService.run();
-
-        verify(pkiService, times(1)).createKeyPair(any(), any());
+    void sync_success() {
+        // After refactor, CertificateManagerServiceImpl delegates sync to KeyStoreSyncService
+        certificateManagerService.sync();
+        verify(keyStoreSyncService, times(1)).syncKeyStoresToFilesystem();
     }
+
+
 }

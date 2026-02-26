@@ -6,13 +6,7 @@
 
 package uk.gov.dbt.ndtp.federator.certificate.manager.service.pki.cryptography;
 
-import org.bouncycastle.asn1.x500.X500Name;
-import org.bouncycastle.cert.X509v3CertificateBuilder;
-import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
-import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
-import org.bouncycastle.operator.ContentSigner;
-import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
-import org.junit.jupiter.api.Test;
+import static org.junit.jupiter.api.Assertions.*;
 
 import java.math.BigInteger;
 import java.security.KeyFactory;
@@ -24,8 +18,13 @@ import java.security.cert.X509Certificate;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Date;
-
-import static org.junit.jupiter.api.Assertions.*;
+import org.bouncycastle.asn1.x500.X500Name;
+import org.bouncycastle.cert.X509v3CertificateBuilder;
+import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
+import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
+import org.bouncycastle.operator.ContentSigner;
+import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
+import org.junit.jupiter.api.Test;
 
 class PemUtilTest {
 
@@ -62,7 +61,8 @@ class PemUtilTest {
         X500Name caName1 = new X500Name("CN=CA1");
         X500Name leafName = new X500Name("CN=Leaf");
 
-        X509Certificate caCert2 = createCert(new X500Name("CN=CA2"), new X500Name("CN=CA2"), caKeyPair2.getPublic(), caKeyPair2.getPrivate());
+        X509Certificate caCert2 = createCert(
+                new X500Name("CN=CA2"), new X500Name("CN=CA2"), caKeyPair2.getPublic(), caKeyPair2.getPrivate());
         // Leaf signed by CA1
         X509Certificate leafCert = createCert(leafName, caName1, leafKeyPair.getPublic(), caKeyPair1.getPrivate());
 
@@ -92,7 +92,8 @@ class PemUtilTest {
         Date start = new Date(past);
         Date end = new Date(past + 1000);
         ContentSigner signer = new JcaContentSignerBuilder("SHA256withRSA").build(caKeyPair.getPrivate());
-        X509v3CertificateBuilder builder = new JcaX509v3CertificateBuilder(caName, BigInteger.valueOf(past), start, end, leafName, leafKeyPair.getPublic());
+        X509v3CertificateBuilder builder = new JcaX509v3CertificateBuilder(
+                caName, BigInteger.valueOf(past), start, end, leafName, leafKeyPair.getPublic());
         X509Certificate expiredCert = new JcaX509CertificateConverter().getCertificate(builder.build(signer));
 
         X509Certificate caCert = createCert(caName, caName, caKeyPair.getPublic(), caKeyPair.getPrivate());
@@ -104,12 +105,14 @@ class PemUtilTest {
         assertThrows(Exception.class, () -> PemUtil.verifyCertificate(leafPem, caPem));
     }
 
-    private X509Certificate createCert(X500Name subject, X500Name issuer, PublicKey pubKey, PrivateKey privKey) throws Exception {
+    private X509Certificate createCert(X500Name subject, X500Name issuer, PublicKey pubKey, PrivateKey privKey)
+            throws Exception {
         long now = System.currentTimeMillis();
         Date start = new Date(now);
         Date end = new Date(now + 100000);
         ContentSigner signer = new JcaContentSignerBuilder("SHA256withRSA").build(privKey);
-        X509v3CertificateBuilder builder = new JcaX509v3CertificateBuilder(issuer, BigInteger.valueOf(now), start, end, subject, pubKey);
+        X509v3CertificateBuilder builder =
+                new JcaX509v3CertificateBuilder(issuer, BigInteger.valueOf(now), start, end, subject, pubKey);
         return new JcaX509CertificateConverter().getCertificate(builder.build(signer));
     }
 
@@ -131,10 +134,10 @@ class PemUtilTest {
         assertEquals("RSA", parsedPub.getAlgorithm());
 
         // Ensure keys are correct by reconstructing via standard factories
-        PrivateKey reconstructedPriv = KeyFactory.getInstance("RSA")
-                .generatePrivate(new PKCS8EncodedKeySpec(parsedPriv.getEncoded()));
-        PublicKey reconstructedPub = KeyFactory.getInstance("RSA")
-                .generatePublic(new X509EncodedKeySpec(parsedPub.getEncoded()));
+        PrivateKey reconstructedPriv =
+                KeyFactory.getInstance("RSA").generatePrivate(new PKCS8EncodedKeySpec(parsedPriv.getEncoded()));
+        PublicKey reconstructedPub =
+                KeyFactory.getInstance("RSA").generatePublic(new X509EncodedKeySpec(parsedPub.getEncoded()));
 
         assertArrayEquals(reconstructedPriv.getEncoded(), parsedPriv.getEncoded());
         assertArrayEquals(reconstructedPub.getEncoded(), parsedPub.getEncoded());
@@ -166,7 +169,8 @@ class PemUtilTest {
         Date start = new Date(now);
         Date end = new Date(now + (1000L * 60 * 60 * 24 * 2)); // 2 days from now
         ContentSigner signer = new JcaContentSignerBuilder("SHA256withRSA").build(kp.getPrivate());
-        X509v3CertificateBuilder builder = new JcaX509v3CertificateBuilder(name, BigInteger.valueOf(now), start, end, name, kp.getPublic());
+        X509v3CertificateBuilder builder =
+                new JcaX509v3CertificateBuilder(name, BigInteger.valueOf(now), start, end, name, kp.getPublic());
         X509Certificate cert = new JcaX509CertificateConverter().getCertificate(builder.build(signer));
 
         String pem = PemUtil.toPem("CERTIFICATE", cert.getEncoded());
@@ -174,17 +178,11 @@ class PemUtilTest {
         assertTrue(PemUtil.isValidForAtLeastDays(pem, 1));
     }
 
-    @Test
-    void extractCn_edgeCases() {
-        // null/blank case
-        // PemUtil is public, but extractCn is private. verifyCertificate uses it.
-        // We can test via verifyCertificate or just be satisfied it's covered.
-        // Let's add a test for a certificate with no CN in DN if possible.
-    }
+
 
     @Test
     void extractCn_directTest() throws Exception {
-        // Since it is private, we can't test it directly easily without reflection, 
+        // Since it is private, we can't test it directly easily without reflection,
         // but we can test verifyCertificate with various DNs.
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
         kpg.initialize(2048);

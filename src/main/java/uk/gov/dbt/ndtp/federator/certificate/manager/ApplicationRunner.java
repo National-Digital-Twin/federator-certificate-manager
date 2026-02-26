@@ -29,6 +29,5 @@ public class ApplicationRunner {
     public static void main(final String[] args) {
         log.info(STARTING_MSG);
         SpringApplication.run(ApplicationRunner.class, args);
-
     }
 }

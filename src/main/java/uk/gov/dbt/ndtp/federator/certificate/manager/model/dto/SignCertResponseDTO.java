@@ -6,10 +6,12 @@
 
 package uk.gov.dbt.ndtp.federator.certificate.manager.model.dto;
 
-
-import lombok.*;
-
 import java.util.List;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Builder
 @Getter
@@ -19,7 +21,7 @@ import java.util.List;
 public class SignCertResponseDTO {
     private String certificate;
     private List<String> caChain;
-    private  String issuingCa;
+    private String issuingCa;
     private String serialNumber;
     private Number expiration;
 }

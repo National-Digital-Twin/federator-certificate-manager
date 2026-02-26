@@ -56,10 +56,44 @@ public interface VaultSecretProvider {
     String getCertificate();
 
     /**
+     * Retrieves the key pair from the configured Vault secret path.
+     *
+     * @return the DTO containing the public and private keys in PEM format, or null if not found
+     * @throws VaultException if retrieval fails
+     */
+    CreateKeyResponseDTO getKeyPair();
+
+    /**
+     * Retrieves the CA chain from the configured Vault secret path.
+     *
+     * @return the list of certificates in the chain in PEM format, or null if not found
+     * @throws VaultException if retrieval fails
+     */
+    java.util.List<String> getCaChain();
+
+    /**
      * Retrieves the Intermediate CA certificate from the configured Vault secret path.
      *
      * @return the Intermediate CA certificate in PEM format, or null if not found
      * @throws VaultException if retrieval fails
      */
     String getIntermediateCa();
+
+    /**
+     * Persists a generic secret to the configured Vault secret path.
+     *
+     * @param suffix the suffix to append to the base path
+     * @param secret the secret data as a map
+     * @throws VaultException if persistence fails
+     */
+    void persistSecret(String suffix, java.util.Map<String, String> secret);
+
+    /**
+     * Retrieves a generic secret from the configured Vault secret path.
+     *
+     * @param suffix the suffix to append to the base path
+     * @return the secret data as a map, or null if not found
+     * @throws VaultException if retrieval fails
+     */
+    java.util.Map<String, Object> getSecret(String suffix);
 }

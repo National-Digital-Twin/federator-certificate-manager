@@ -6,8 +6,11 @@
 
 package uk.gov.dbt.ndtp.federator.certificate.manager.model.dto;
 
-
-import lombok.*;
+import lombok.AllArgsConstructor;
+import lombok.Builder;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 @Builder
 @Getter
@@ -15,7 +18,7 @@ import lombok.*;
 @NoArgsConstructor
 @AllArgsConstructor
 public class CreateKeyResponseDTO {
-    public String privateKeyPem;
+    private String privateKeyPem;
     private String publicKeyPem;
     private String algorithm;
     private String createdAt;

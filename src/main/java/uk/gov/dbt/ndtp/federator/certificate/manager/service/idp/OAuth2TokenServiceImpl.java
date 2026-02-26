@@ -7,7 +7,6 @@
 package uk.gov.dbt.ndtp.federator.certificate.manager.service.idp;
 
 import java.util.Map;
-
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
@@ -65,7 +64,8 @@ public class OAuth2TokenServiceImpl implements OAuth2TokenService {
         formData.add(CLIENT_ID, clientId);
 
         try {
-            Map<String, Object> response = restClient.post()
+            Map<String, Object> response = restClient
+                    .post()
                     .uri(tokenUri)
                     .contentType(MediaType.APPLICATION_FORM_URLENCODED)
                     .body(formData)
@@ -79,10 +79,11 @@ public class OAuth2TokenServiceImpl implements OAuth2TokenService {
                 return new TokenResponse(token, expiresIn);
             } else {
                 log.error("Token response did not contain access_token: {}", response);
-                throw new OAuth2TokenException("Failed to retrieve access token. Missing access_token in response: " + response);
+                throw new OAuth2TokenException(
+                        "Failed to retrieve access token. Missing access_token in response: " + response);
             }
         } catch (Exception e) {
-            log.error("Error retrieving OAuth2 token: {}", e.getMessage());
+            log.error("Error retrieving OAuth2 token", e);
             throw new OAuth2TokenException("Error retrieving OAuth2 token", e);
         }
     }

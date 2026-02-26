@@ -12,7 +12,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import uk.gov.dbt.ndtp.federator.certificate.manager.exception.ManagementNodeException;
-import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.CertificateResponse;
+import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.CertificateResponseDTO;
 import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.SignCertRequestDTO;
 import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.SignCertResponseDTO;
 import uk.gov.dbt.ndtp.federator.certificate.manager.service.idp.TokenCacheService;
@@ -56,20 +56,21 @@ public class ManagementNodeServiceImpl implements ManagementNodeService {
      * @throws ManagementNodeException if the API call fails
      */
     @Override
-    public CertificateResponse getIntermediateCertificate() {
+    public CertificateResponseDTO getIntermediateCertificate() {
         String token = tokenCacheService.getToken();
         String url = baseUrl + INTERMEDIATE_CERT_PATH;
 
         log.info("Requesting intermediate certificate from {}", url);
 
         try {
-            return restClient.get()
+            return restClient
+                    .get()
                     .uri(url)
                     .header(HttpHeaders.AUTHORIZATION, BEARER_PREFIX + token)
                     .retrieve()
-                    .body(CertificateResponse.class);
+                    .body(CertificateResponseDTO.class);
         } catch (Exception e) {
-            log.error("Failed to retrieve intermediate certificate: {}", e.getMessage());
+            log.error("Failed to retrieve intermediate certificate", e);
             throw new ManagementNodeException("Failed to retrieve intermediate certificate", e);
         }
     }
@@ -88,14 +89,15 @@ public class ManagementNodeServiceImpl implements ManagementNodeService {
         log.info("Requesting certificate signing from {}", url);
 
         try {
-            return restClient.post()
+            return restClient
+                    .post()
                     .uri(url)
                     .header(HttpHeaders.AUTHORIZATION, BEARER_PREFIX + token)
                     .body(request)
                     .retrieve()
                     .body(SignCertResponseDTO.class);
         } catch (Exception e) {
-            log.error("Failed to sign certificate: {}", e.getMessage());
+            log.error("Failed to sign certificate", e);
             throw new ManagementNodeException("Failed to sign certificate", e);
         }
     }

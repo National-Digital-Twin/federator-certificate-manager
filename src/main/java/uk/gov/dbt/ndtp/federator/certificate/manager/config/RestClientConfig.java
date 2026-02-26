@@ -20,6 +20,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.web.client.RestClient;
+import uk.gov.dbt.ndtp.federator.certificate.manager.exception.RestClientConfigurationException;
 
 /**
  * Configuration class for the Spring RestClient.
@@ -48,36 +49,44 @@ public class RestClientConfig {
      * Loads the keystore and truststore from the configured paths and passwords.
      *
      * @return a configured RestClient instance
-     * @throws Exception if there is an error loading keystores or building the SSL context
      */
     @Bean
-    public RestClient mtlsRestClient() throws Exception {
-        KeyStore keyStore = KeyStore.getInstance(keyStoreType);
-        try (FileInputStream fis = new FileInputStream(keyStorePath)) {
-            keyStore.load(fis, keyStorePassword.toCharArray());
+    public RestClient mtlsRestClient() {
+        try {
+            KeyStore keyStore = loadKeyStore(keyStorePath, keyStorePassword, keyStoreType);
+            KeyStore trustStore = loadKeyStore(trustStorePath, trustStorePassword, keyStoreType);
+
+            SSLContext sslContext = SSLContextBuilder.create()
+                    .loadKeyMaterial(keyStore, keyStorePassword.toCharArray())
+                    .loadTrustMaterial(trustStore, null)
+                    .build();
+
+            HttpClientConnectionManager cm = PoolingHttpClientConnectionManagerBuilder.create()
+                    .setTlsSocketStrategy(new DefaultClientTlsStrategy(sslContext))
+                    .build();
+
+            CloseableHttpClient httpClient = HttpClients.custom()
+                    .setConnectionManager(cm)
+                    .evictExpiredConnections()
+                    .build();
+
+            return RestClient.builder()
+                    .requestFactory(new HttpComponentsClientHttpRequestFactory(httpClient))
+                    .build();
+        } catch (Exception e) {
+            throw new RestClientConfigurationException("Failed to configure mTLS RestClient", e);
         }
+    }
 
-        KeyStore trustStore = KeyStore.getInstance(keyStoreType);
-        try (FileInputStream fis = new FileInputStream(trustStorePath)) {
-            trustStore.load(fis, trustStorePassword.toCharArray());
+    private KeyStore loadKeyStore(String path, String password, String type) {
+        try {
+            KeyStore ks = KeyStore.getInstance(type);
+            try (FileInputStream fis = new FileInputStream(path)) {
+                ks.load(fis, password.toCharArray());
+            }
+            return ks;
+        } catch (Exception e) {
+            throw new RestClientConfigurationException("Failed to load keystore from " + path, e);
         }
-
-        SSLContext sslContext = SSLContextBuilder.create()
-                .loadKeyMaterial(keyStore, keyStorePassword.toCharArray())
-                .loadTrustMaterial(trustStore, null)
-                .build();
-
-        HttpClientConnectionManager cm = PoolingHttpClientConnectionManagerBuilder.create()
-                .setTlsSocketStrategy(new DefaultClientTlsStrategy(sslContext))
-                .build();
-
-        CloseableHttpClient httpClient = HttpClients.custom()
-                .setConnectionManager(cm)
-                .evictExpiredConnections()
-                .build();
-
-        return RestClient.builder()
-                .requestFactory(new HttpComponentsClientHttpRequestFactory(httpClient))
-                .build();
     }
 }

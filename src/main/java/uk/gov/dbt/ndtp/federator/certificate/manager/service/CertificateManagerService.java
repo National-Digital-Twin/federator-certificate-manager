@@ -12,9 +12,15 @@ package uk.gov.dbt.ndtp.federator.certificate.manager.service;
 public interface CertificateManagerService {
 
     /**
-     * Executes the scheduled task to check the current token and perform management activities.
+     * Periodically executed task to check certificate status and initiate renewal if necessary.
+     * Also ensures the intermediate CA is refreshed.
      */
     void run();
+
+    /**
+     * Periodically executed task to synchronize on-disk keystores and truststores with Vault.
+     */
+    void sync();
 
     /**
      * Generates a new key pair and persists it to the configured Vault secret path.

@@ -42,6 +42,11 @@ public class CertificateProperties {
     private Subject subject = new Subject();
 
     /**
+     * The destination configuration for keystore and truststore.
+     */
+    private Destination destination = new Destination();
+
+    /**
      * Nested class for certificate subject fields.
      */
     @Getter
@@ -57,5 +62,52 @@ public class CertificateProperties {
          * Comma-separated list of alternative names (DNS).
          */
         private String altNames;
+    }
+
+    /**
+     * Nested class for destination configuration.
+     */
+    @Getter
+    @Setter
+    public static class Destination {
+        /**
+         * The base directory path where all certificate files will be written.
+         */
+        private String path;
+
+        /**
+         * The filename for the PKCS12 keystore.
+         */
+        private String keystoreFile = "keystore.p12";
+
+        /**
+         * The filename for the PKCS12 truststore.
+         */
+        private String truststoreFile = "truststore.p12";
+
+        /**
+         * The password for the PKCS12 keystore. If not provided, it will be generated.
+         */
+        private String keystorePassword;
+
+        /**
+         * The filename for the keystore password.
+         */
+        private String keystorePasswordFile = "keystore.password";
+
+        /**
+         * The password for the PKCS12 truststore. If not provided, it will be generated.
+         */
+        private String truststorePassword;
+
+        /**
+         * The filename for the truststore password.
+         */
+        private String truststorePasswordFile = "truststore.password";
+
+        /**
+         * The alias for the certificate in the keystore.
+         */
+        private String keystoreAlias = "federator";
     }
 }

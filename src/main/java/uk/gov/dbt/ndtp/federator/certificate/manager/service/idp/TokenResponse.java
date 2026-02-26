@@ -6,10 +6,9 @@
 
 package uk.gov.dbt.ndtp.federator.certificate.manager.service.idp;
 
+import java.time.Instant;
 import lombok.Getter;
 import lombok.ToString;
-
-import java.time.Instant;
 
 /**
  * Immutable value object representing an OAuth2 access token response.

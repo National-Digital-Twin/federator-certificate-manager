@@ -7,7 +7,7 @@
 package uk.gov.dbt.ndtp.federator.certificate.manager.service;
 
 import uk.gov.dbt.ndtp.federator.certificate.manager.exception.ManagementNodeException;
-import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.CertificateResponse;
+import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.CertificateResponseDTO;
 import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.SignCertRequestDTO;
 import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.SignCertResponseDTO;
 
@@ -19,10 +19,10 @@ public interface ManagementNodeService {
     /**
      * Retrieves the intermediate certificate from the Management Node.
      *
-     * @return a {@link CertificateResponse} containing the certificate data
+     * @return a {@link CertificateResponseDTO} containing the certificate data
      * @throws ManagementNodeException if the retrieval fails
      */
-    CertificateResponse getIntermediateCertificate();
+    CertificateResponseDTO getIntermediateCertificate();
 
     /**
      * Sends a CSR to the Management Node to be signed.

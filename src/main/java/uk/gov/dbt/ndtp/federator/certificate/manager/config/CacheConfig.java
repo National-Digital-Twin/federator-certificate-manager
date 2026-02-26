@@ -33,9 +33,8 @@ public class CacheConfig {
     @Bean
     public CacheManager cacheManager() {
         CaffeineCacheManager cacheManager = new CaffeineCacheManager(TOKEN_CACHE);
-        cacheManager.setCaffeine(Caffeine.newBuilder()
-                .expireAfterWrite(1, TimeUnit.HOURS)
-                .maximumSize(10));
+        cacheManager.setCaffeine(
+                Caffeine.newBuilder().expireAfterWrite(1, TimeUnit.HOURS).maximumSize(10));
         return cacheManager;
     }
 }

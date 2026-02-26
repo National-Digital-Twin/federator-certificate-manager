@@ -6,6 +6,12 @@
 
 package uk.gov.dbt.ndtp.federator.certificate.manager.service.pki;
 
+import java.security.KeyPair;
+import java.security.KeyPairGenerator;
+import java.security.NoSuchAlgorithmException;
+import java.security.PrivateKey;
+import java.time.Instant;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.bouncycastle.asn1.pkcs.PKCSObjectIdentifiers;
 import org.bouncycastle.asn1.x500.X500Name;
@@ -17,22 +23,12 @@ import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.bouncycastle.pkcs.PKCS10CertificationRequest;
 import org.bouncycastle.pkcs.jcajce.JcaPKCS10CertificationRequestBuilder;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
-import org.springframework.vault.core.VaultTemplate;
 import uk.gov.dbt.ndtp.federator.certificate.manager.exception.PkiException;
 import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.CreateCsrRequestDTO;
 import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.CreateCsrResponseDTO;
 import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.CreateKeyResponseDTO;
 import uk.gov.dbt.ndtp.federator.certificate.manager.service.pki.cryptography.PemUtil;
-
-
-import java.security.KeyPair;
-import java.security.KeyPairGenerator;
-import java.security.NoSuchAlgorithmException;
-import java.security.PrivateKey;
-import java.time.Instant;
-import java.util.UUID;
 
 /**
  * Service for managing PKI operations using HashiCorp Vault.
@@ -94,33 +90,29 @@ public class PkiService {
             var publicKey = PemUtil.parsePublicKey(publicKeyPem);
 
             // Build subject including State (ST) and Locality (L)
-            String subject = String.format("C=%s, ST=%s, L=%s, O=%s, OU=%s, CN=%s",
+            String subject = String.format(
+                    "C=%s, ST=%s, L=%s, O=%s, OU=%s, CN=%s",
                     safe(req.getCountry()),
                     safe(req.getState()),
                     safe(req.getLocality()),
                     safe(req.getOrganization()),
                     safe(req.getOrganizationalUnit()),
-                    safe(req.getCommonName())
-            );
+                    safe(req.getCommonName()));
             X500Name x500 = new X500Name(subject);
 
             // CSR builder
-            JcaPKCS10CertificationRequestBuilder csrBuilder =
-                    new JcaPKCS10CertificationRequestBuilder(x500, publicKey);
+            JcaPKCS10CertificationRequestBuilder csrBuilder = new JcaPKCS10CertificationRequestBuilder(x500, publicKey);
 
             // SANs
             java.util.List<String> dnsSans = req.getDnsSans();
             if (dnsSans != null && !dnsSans.isEmpty()) {
                 log.debug("Adding DNS SANs to CSR: {}", dnsSans);
-                GeneralNames sans = new GeneralNames(
-                        dnsSans.stream().map(d -> new GeneralName(GeneralName.dNSName, d)).toArray(GeneralName[]::new)
-                );
+                GeneralNames sans = new GeneralNames(dnsSans.stream()
+                        .map(d -> new GeneralName(GeneralName.dNSName, d))
+                        .toArray(GeneralName[]::new));
                 csrBuilder.addAttribute(
                         PKCSObjectIdentifiers.pkcs_9_at_extensionRequest,
-                        new Extensions(new Extension(
-                                Extension.subjectAlternativeName, false, sans.getEncoded()
-                        ))
-                );
+                        new Extensions(new Extension(Extension.subjectAlternativeName, false, sans.getEncoded())));
             }
 
             ContentSigner signer = new JcaContentSignerBuilder("SHA256withRSA").build(privateKey);
@@ -135,8 +127,6 @@ public class PkiService {
             throw new PkiException("CSR creation failed", e);
         }
     }
-
-
 
     /**
      * Safely formats a subject component by replacing commas with spaces.

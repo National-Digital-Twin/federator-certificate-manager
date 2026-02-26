@@ -6,17 +6,15 @@
 
 package uk.gov.dbt.ndtp.federator.certificate.manager.service;
 
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 import uk.gov.dbt.ndtp.federator.certificate.manager.config.CertificateProperties;
 import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.*;
 import uk.gov.dbt.ndtp.federator.certificate.manager.service.pki.PkiService;
 import uk.gov.dbt.ndtp.federator.certificate.manager.service.pki.VaultSecretProvider;
 import uk.gov.dbt.ndtp.federator.certificate.manager.service.pki.cryptography.PemUtil;
-
-import java.util.List;
 
 /**
  * Service responsible for periodic certificate management tasks.
@@ -33,17 +31,16 @@ public class CertificateManagerServiceImpl implements CertificateManagerService 
     private final PkiService pkiService;
     private final VaultSecretProvider vaultSecretProvider;
     private final CertificateProperties certificateProperties;
+    private final KeyStoreSyncService keyStoreSyncService;
 
-    // Run periodically as configured in application.yml
     /**
-     * Periodically executed task to check and log the current OAuth2 token and retrieve intermediate certificate.
-     * The execution frequency is controlled by the 'application.scheduling.certificate-manager.fixed-rate' property.
+     * Periodically executed task to check certificate status and initiate renewal if necessary.
+     * Also ensures the intermediate CA is refreshed.
      */
     @Override
-    @Scheduled(fixedRateString = "${application.scheduling.certificate-manager.fixed-rate}")
     public void run() {
         try {
-             // Ensure Intermediate CA is healthy before attempting certificate renewal
+            // Ensure Intermediate CA is healthy before attempting certificate renewal
             checkAndRefreshIntermediateCa();
 
             String currentCert = vaultSecretProvider.getCertificate();
@@ -56,16 +53,31 @@ public class CertificateManagerServiceImpl implements CertificateManagerService 
 
                 double threshold = certificateProperties.getRenewalThresholdPercentage();
                 if (PemUtil.isValidityBelowThreshold(currentCert, threshold)) {
-                    log.info("Certificate validity is below {}%. Expiry date: {}, days remaining: {}. Initiating renewal...",
+                    log.info(
+                            "Certificate validity is below {}%. Expiry date: {}, days remaining: {}. Initiating renewal...",
                             threshold, expiryDateStr, daysLeft);
                     renewCertificate();
                 } else {
-                    log.info("Certificate is still valid above threshold. Expiry date: {}, days remaining: {}. Skipping renewal.",
-                            expiryDateStr, daysLeft);
+                    log.info(
+                            "Certificate is still valid above threshold. Expiry date: {}, days remaining: {}. Skipping renewal.",
+                            expiryDateStr,
+                            daysLeft);
                 }
             }
         } catch (Exception e) {
-            log.error("[Scheduler] Failed to perform management task: {}", e.getMessage());
+            log.error("Failed to perform certificate renewal task", e);
+        }
+    }
+
+    /**
+     * Periodically executed task to synchronize on-disk keystores and truststores with Vault.
+     */
+    @Override
+    public void sync() {
+        try {
+            keyStoreSyncService.syncKeyStoresToFilesystem();
+        } catch (Exception e) {
+            log.error("Failed to synchronize keystores to filesystem", e);
         }
     }
 
@@ -94,10 +106,15 @@ public class CertificateManagerServiceImpl implements CertificateManagerService 
                     log.warn("Intermediate CA not found in Vault. Requesting a new one from Management Node...");
                 } else {
                     long daysLeft = PemUtil.daysUntilExpiry(current);
-                    log.warn("Intermediate CA expires in {} days (< {} threshold). Requesting a new one...", daysLeft, minValidDays);
+                    log.warn(
+                            "Intermediate CA expires in {} days (< {} threshold). Requesting a new one...",
+                            daysLeft,
+                            minValidDays);
                 }
-                CertificateResponse response = managementNodeService.getIntermediateCertificate();
-                if (response != null && response.getCertificate() != null && !response.getCertificate().isBlank()) {
+                CertificateResponseDTO response = managementNodeService.getIntermediateCertificate();
+                if (response != null
+                        && response.getCertificate() != null
+                        && !response.getCertificate().isBlank()) {
                     vaultSecretProvider.persistIntermediateCa(response.getCertificate());
                     log.info("Intermediate CA updated and persisted to Vault.");
                 } else {
@@ -107,36 +124,37 @@ public class CertificateManagerServiceImpl implements CertificateManagerService 
                 log.info("Intermediate CA in Vault is valid for at least {} days. No action required.", minValidDays);
             }
         } catch (Exception e) {
-            log.error("Failed to validate or refresh Intermediate CA: {}", e.getMessage());
+            log.error("Failed to validate or refresh Intermediate CA", e);
         }
     }
 
+    /**
+     * Executes the certificate renewal workflow: generates new keys, requests a CSR, and sends it for signing.
+     */
     @Override
     public void renewCertificate() {
         log.info(RENEW_LOG_MSG);
 
-            CreateKeyResponseDTO keyPair = generateAndPersistKeyPair();
-            if (keyPair == null) {
-                log.warn("Key pair generation returned null; skipping CSR creation and signing.");
-                return;
-            }
+        CreateKeyResponseDTO keyPair = generateAndPersistKeyPair();
+        if (keyPair == null) {
+            log.warn("Key pair generation returned null; skipping CSR creation and signing.");
+            return;
+        }
 
-            CreateCsrResponseDTO csr = createCsr(keyPair);
-            if (csr == null || csr.getCsrPem() == null) {
-                log.warn("CSR not available; skipping certificate signing request.");
-                return;
-            }
+        CreateCsrResponseDTO csr = createCsr(keyPair);
+        if (csr == null || csr.getCsrPem() == null) {
+            log.warn("CSR not available; skipping certificate signing request.");
+            return;
+        }
 
-            SignCertResponseDTO signed = requestSigning(csr);
-            if (signed == null) {
-                log.warn("Sign certificate response was null");
-                return;
-            }
+        SignCertResponseDTO signed = requestSigning(csr);
+        if (signed == null) {
+            log.warn("Sign certificate response was null");
+            return;
+        }
 
-            persistSignedArtifacts(signed);
-            log.info("Certificate renewal completed successfully.");
-
-
+        persistSignedArtifacts(signed);
+        log.info("Certificate renewal completed successfully.");
     }
 
     private CreateKeyResponseDTO generateAndPersistKeyPair() {
@@ -179,8 +197,7 @@ public class CertificateManagerServiceImpl implements CertificateManagerService 
 
     private SignCertResponseDTO requestSigning(CreateCsrResponseDTO csrResp) {
         return managementNodeService.signCertificate(
-                SignCertRequestDTO.builder().csr(csrResp.getCsrPem()).build()
-        );
+                SignCertRequestDTO.builder().csr(csrResp.getCsrPem()).build());
     }
 
     private void persistSignedArtifacts(SignCertResponseDTO signResp) {
@@ -190,8 +207,7 @@ public class CertificateManagerServiceImpl implements CertificateManagerService 
             return;
         }
 
-        if (!isSignedCertificateValid(certificate))
-            return;
+        if (!isSignedCertificateValid(certificate)) return;
 
         vaultSecretProvider.persistCertificate(certificate);
         persistCaChain(signResp);
@@ -227,7 +243,7 @@ public class CertificateManagerServiceImpl implements CertificateManagerService 
                 return true;
             }
         } catch (Exception e) {
-            log.error("Certificate verification failed: {}. The certificate will not be persisted.", e.getMessage());
+            log.error("Certificate verification failed. The certificate will not be persisted.", e);
             return false;
         }
     }

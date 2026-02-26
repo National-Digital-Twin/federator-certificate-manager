@@ -8,10 +8,7 @@ package uk.gov.dbt.ndtp.federator.certificate.manager.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.RETURNS_DEEP_STUBS;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -23,7 +20,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpHeaders;
 import org.springframework.web.client.RestClient;
 import uk.gov.dbt.ndtp.federator.certificate.manager.exception.ManagementNodeException;
-import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.CertificateResponse;
+import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.CertificateResponseDTO;
 import uk.gov.dbt.ndtp.federator.certificate.manager.service.idp.TokenCacheService;
 
 @ExtendWith(MockitoExtension.class)
@@ -47,9 +44,8 @@ class ManagementNodeServiceImplTest {
     @Test
     void getIntermediateCertificate_returnsResponseOnSuccess() {
         String token = "test-token";
-        CertificateResponse expectedResponse = CertificateResponse.builder()
-                .certificate("cert-data")
-                .build();
+        CertificateResponseDTO expectedResponse =
+                CertificateResponseDTO.builder().certificate("cert-data").build();
 
         when(tokenCacheService.getToken()).thenReturn(token);
 
@@ -58,12 +54,15 @@ class ManagementNodeServiceImplTest {
         RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
 
         when(restClient.get()).thenReturn(requestHeadersUriSpec);
-        when(requestHeadersUriSpec.uri(baseUrl + ManagementNodeServiceImpl.INTERMEDIATE_CERT_PATH)).thenReturn(requestHeadersSpec);
-        when(requestHeadersSpec.header(eq(HttpHeaders.AUTHORIZATION), eq(ManagementNodeServiceImpl.BEARER_PREFIX + token))).thenReturn(requestHeadersSpec);
+        when(requestHeadersUriSpec.uri(baseUrl + ManagementNodeServiceImpl.INTERMEDIATE_CERT_PATH))
+                .thenReturn(requestHeadersSpec);
+        when(requestHeadersSpec.header(
+                        eq(HttpHeaders.AUTHORIZATION), eq(ManagementNodeServiceImpl.BEARER_PREFIX + token)))
+                .thenReturn(requestHeadersSpec);
         when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
-        when(responseSpec.body(CertificateResponse.class)).thenReturn(expectedResponse);
+        when(responseSpec.body(CertificateResponseDTO.class)).thenReturn(expectedResponse);
 
-        CertificateResponse actualResponse = managementNodeService.getIntermediateCertificate();
+        CertificateResponseDTO actualResponse = managementNodeService.getIntermediateCertificate();
 
         assertEquals(expectedResponse, actualResponse);
     }

@@ -37,13 +37,14 @@ class OAuth2TokenServiceImplTest {
         payload.put("access_token", "srv-token");
         payload.put("expires_in", 900);
 
-        when(restClient.post()
-                .uri(anyString())
-                .contentType(any(MediaType.class))
-                .body(any(MultiValueMap.class))
-                .retrieve()
-                .body(any(ParameterizedTypeReference.class)))
-            .thenReturn(payload);
+        when(restClient
+                        .post()
+                        .uri(anyString())
+                        .contentType(any(MediaType.class))
+                        .body(any(MultiValueMap.class))
+                        .retrieve()
+                        .body(any(ParameterizedTypeReference.class)))
+                .thenReturn(payload);
 
         OAuth2TokenServiceImpl service = new OAuth2TokenServiceImpl(restClient, "https://example/token", "CLIENT");
 
@@ -57,13 +58,14 @@ class OAuth2TokenServiceImplTest {
     void getAccessToken_throwsExceptionWhenAccessTokenMissing() {
         RestClient restClient = mock(RestClient.class, RETURNS_DEEP_STUBS);
 
-        when(restClient.post()
-                .uri(anyString())
-                .contentType(any(MediaType.class))
-                .body(any(MultiValueMap.class))
-                .retrieve()
-                .body(any(ParameterizedTypeReference.class)))
-            .thenReturn(Collections.emptyMap());
+        when(restClient
+                        .post()
+                        .uri(anyString())
+                        .contentType(any(MediaType.class))
+                        .body(any(MultiValueMap.class))
+                        .retrieve()
+                        .body(any(ParameterizedTypeReference.class)))
+                .thenReturn(Collections.emptyMap());
 
         OAuth2TokenServiceImpl service = new OAuth2TokenServiceImpl(restClient, "https://example/token", "CLIENT");
 
@@ -74,13 +76,14 @@ class OAuth2TokenServiceImplTest {
     void getAccessToken_throwsExceptionWhenResponseIsNull() {
         RestClient restClient = mock(RestClient.class, RETURNS_DEEP_STUBS);
 
-        when(restClient.post()
-                .uri(anyString())
-                .contentType(any(MediaType.class))
-                .body(any(MultiValueMap.class))
-                .retrieve()
-                .body(any(ParameterizedTypeReference.class)))
-            .thenReturn(null);
+        when(restClient
+                        .post()
+                        .uri(anyString())
+                        .contentType(any(MediaType.class))
+                        .body(any(MultiValueMap.class))
+                        .retrieve()
+                        .body(any(ParameterizedTypeReference.class)))
+                .thenReturn(null);
 
         OAuth2TokenServiceImpl service = new OAuth2TokenServiceImpl(restClient, "https://example/token", "CLIENT");
 
@@ -91,13 +94,14 @@ class OAuth2TokenServiceImplTest {
     void getAccessToken_throwsExceptionWhenRestClientFails() {
         RestClient restClient = mock(RestClient.class, RETURNS_DEEP_STUBS);
 
-        when(restClient.post()
-                .uri(anyString())
-                .contentType(any(MediaType.class))
-                .body(any(MultiValueMap.class))
-                .retrieve()
-                .body(any(ParameterizedTypeReference.class)))
-            .thenThrow(new RuntimeException("Network error"));
+        when(restClient
+                        .post()
+                        .uri(anyString())
+                        .contentType(any(MediaType.class))
+                        .body(any(MultiValueMap.class))
+                        .retrieve()
+                        .body(any(ParameterizedTypeReference.class)))
+                .thenThrow(new RuntimeException("Network error"));
 
         OAuth2TokenServiceImpl service = new OAuth2TokenServiceImpl(restClient, "https://example/token", "CLIENT");
 

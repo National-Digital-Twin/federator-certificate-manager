@@ -19,7 +19,6 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
 import uk.gov.dbt.ndtp.federator.certificate.manager.config.CacheConfig;
@@ -106,7 +105,7 @@ class TokenCacheServiceImplTest {
         when(tokenService.getAccessToken()).thenThrow(new OAuth2TokenException("Service failure"));
 
         assertThrows(OAuth2TokenException.class, () -> cacheService.refreshToken());
-        
+
         verify(cache).evict("currentToken");
     }
 
