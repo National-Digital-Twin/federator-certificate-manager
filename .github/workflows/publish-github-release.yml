@@ -100,7 +100,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Download SBOM Artifact
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f
         with:
           name: sbom
 
