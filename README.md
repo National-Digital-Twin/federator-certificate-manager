@@ -1,7 +1,9 @@
 # Federator Certificate Manager
 
 **Repository:** `federator-certificate-manager`
-**Description:** 'The Federator Certificate Manager is a non-interactive Spring Boot service that automates X.509 certificate lifecycle management for federator components within the **National Digital Twin Programme (NDTP)**. It operates as a headless daemon — no HTTP endpoints are exposed — running two scheduled jobs that handle certificate renewal and filesystem synchronisation.'
+
+**Description:** `The Federator Certificate Manager is a non-interactive Spring Boot service that automates X.509 certificate lifecycle management for federator components within the Node-Net.`
+
 **Repository Status:** `Private – NDTP InnerSource`
 
 ---
@@ -355,39 +357,6 @@ vault token revoke ${VAULT_TOKEN}
 rm -f /etc/certs/keystore.jks /etc/certs/truststore.jks
 ```
 
----
-
-## Project Structure
-
-```
-src/main/java/uk/gov/dbt/ndtp/federator/certificate/manager/
-├── CertificateManagerApplication.java          # Spring Boot entry point
-├── config/
-│   ├── CacheConfig.java                        # Caffeine cache (OAuth2 tokens)
-│   ├── CertificateProperties.java              # @ConfigurationProperties binding
-│   ├── RestClientConfig.java                   # mTLS RestClient bean
-│   └── SchedulingConfig.java                   # ThreadPoolTaskScheduler (2 threads)
-├── exception/                                  # Domain-specific RuntimeExceptions
-├── job/
-│   ├── CertificateRenewalJob.java              # @Scheduled renewal trigger
-│   └── CertificateSyncJob.java                 # @Scheduled sync trigger
-├── model/dto/                                  # Request/response DTOs (Lombok)
-└── service/
-    ├── CertificateManagerService[Impl].java    # Orchestrator
-    ├── FileSystemService[Impl].java            # Atomic writes
-    ├── KeyStoreSyncService[Impl].java          # PKCS#12 generation & sync
-    ├── ManagementNodeService[Impl].java        # Management Node REST client
-    ├── idp/
-    │   ├── OAuth2TokenService[Impl].java       # Token acquisition
-    │   ├── TokenCacheService[Impl].java        # Caffeine-backed cache
-    │   └── TokenResponse.java                  # Token DTO
-    └── pki/
-        ├── KeyStoreService.java                # PKCS#12 store creation
-        ├── PkiService.java                     # RSA keygen + CSR (Bouncy Castle)
-        ├── VaultSecretProvider[Impl].java       # Vault KV v2 operations
-        └── cryptography/
-            └── PemUtil.java                    # PEM encode/decode/verify
-```
 
 ---
 
@@ -436,7 +405,7 @@ This project generates a CycloneDX SBOM during the `package` phase:
 
 ```sh
 mvn package
-# Output: target/federator-certificate-manager-1.0.1-bom.json
+# Output: target/federator-certificate-manager-1.0.0.jar
 ```
 
 Download the [latest SBOM for this codebase](../../dependency-graph/sbom) to view the current list of components.
