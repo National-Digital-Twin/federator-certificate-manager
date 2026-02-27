@@ -1,6 +1,6 @@
 # NDTP InnerSource License
 
-**Repository:** `[repository-name]`  
+**Repository:** `federator-certificate-manager`  
 **Description:** `Defines the licensing terms for the source code in this repository.`  
 
 ---
