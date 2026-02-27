@@ -7,12 +7,18 @@
 package uk.gov.dbt.ndtp.federator.certificate.manager.service;
 
 import java.io.ByteArrayInputStream;
+import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.security.Key;
 import java.security.KeyStore;
+import java.security.PrivateKey;
 import java.security.SecureRandom;
+import java.security.cert.Certificate;
+import java.security.cert.X509Certificate;
+import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Base64;
 import java.util.HashMap;
@@ -36,7 +42,7 @@ import uk.gov.dbt.ndtp.federator.certificate.manager.service.pki.cryptography.Pe
 @RequiredArgsConstructor
 public class KeyStoreSyncServiceImpl implements KeyStoreSyncService {
 
-    public static final String PASSWORD = "password";
+    private static final String PASSWORD = "password";
     private static final String PKCS_12 = "PKCS12";
     private static final SecureRandom RANDOM = new SecureRandom();
     private final CertificateProperties certificateProperties;
@@ -47,67 +53,61 @@ public class KeyStoreSyncServiceImpl implements KeyStoreSyncService {
     @Override
     public void syncKeyStoresToFilesystem() {
         log.info("Synchronizing keystores to filesystem...");
-        try {
-            CertificateProperties.Destination config = certificateProperties.getDestination();
-            Path basePath = Paths.get(config.getPath());
+        CertificateProperties.Destination config = certificateProperties.getDestination();
+        Path basePath = Paths.get(config.getPath());
 
-            String keystorePassword = resolvePassword(config.getKeystorePassword(), "keystore-password");
-            String truststorePassword = resolvePassword(config.getTruststorePassword(), "truststore-password");
+        String keystorePassword = resolvePassword(config.getKeystorePassword(), "keystore-password");
+        String truststorePassword = resolvePassword(config.getTruststorePassword(), "truststore-password");
 
-            String certificatePem = vaultSecretProvider.getCertificate();
-            CreateKeyResponseDTO keyPair = vaultSecretProvider.getKeyPair();
-            List<String> caChain = vaultSecretProvider.getCaChain();
+        String certificatePem = vaultSecretProvider.getCertificate();
+        CreateKeyResponseDTO keyPair = vaultSecretProvider.getKeyPair();
+        List<String> caChain = vaultSecretProvider.getCaChain();
 
-            if (certificatePem != null && keyPair != null && keyPair.getPrivateKeyPem() != null) {
-                Path keystorePath = basePath.resolve(config.getKeystoreFile());
-                boolean needsUpdate = shouldUpdateKeyStore(
-                        keystorePath,
-                        keystorePassword,
+        if (certificatePem != null && keyPair != null && keyPair.getPrivateKeyPem() != null) {
+            Path keystorePath = basePath.resolve(config.getKeystoreFile());
+            boolean needsUpdate = shouldUpdateKeyStore(
+                    keystorePath,
+                    keystorePassword,
+                    keyPair.getPrivateKeyPem(),
+                    certificatePem,
+                    caChain,
+                    config.getKeystoreAlias());
+
+            if (needsUpdate) {
+                byte[] keystoreBytes = keyStoreService.createKeyStore(
                         keyPair.getPrivateKeyPem(),
                         certificatePem,
                         caChain,
+                        keystorePassword,
                         config.getKeystoreAlias());
-
-                if (needsUpdate) {
-                    byte[] keystoreBytes = keyStoreService.createKeyStore(
-                            keyPair.getPrivateKeyPem(),
-                            certificatePem,
-                            caChain,
-                            keystorePassword,
-                            config.getKeystoreAlias());
-                    validateKeyStore(keystoreBytes, keystorePassword, config.getKeystoreAlias());
-                    fileSystemService.atomicWrite(keystorePath, keystoreBytes);
-                    log.info("Keystore synchronized to {}", keystorePath);
-                } else {
-                    log.debug("Keystore at {} is already in sync with Vault. Skipping update.", keystorePath);
-                }
-                // Always check password file synchronization independently
-                writePasswordToFile(keystorePath, config.getKeystorePasswordFile(), keystorePassword);
+                validateKeyStore(keystoreBytes, keystorePassword, config.getKeystoreAlias());
+                fileSystemService.atomicWrite(keystorePath, keystoreBytes);
+                log.info("Keystore synchronized to {}", keystorePath);
             } else {
-                log.warn("Missing certificate or key pair in Vault. Skipping keystore synchronization.");
+                log.debug("Keystore at {} is already in sync with Vault. Skipping update.", keystorePath);
             }
+            // Always check password file synchronization independently
+            writePasswordToFile(keystorePath, config.getKeystorePasswordFile(), keystorePassword);
+        } else {
+            log.warn("Missing certificate or key pair in Vault. Skipping keystore synchronization.");
+        }
 
-            if (caChain != null && !caChain.isEmpty()) {
-                Path truststorePath = basePath.resolve(config.getTruststoreFile());
-                boolean needsUpdate = shouldUpdateTrustStore(truststorePath, truststorePassword, caChain);
+        if (caChain != null && !caChain.isEmpty()) {
+            Path truststorePath = basePath.resolve(config.getTruststoreFile());
+            boolean needsUpdate = shouldUpdateTrustStore(truststorePath, truststorePassword, caChain);
 
-                if (needsUpdate) {
-                    byte[] truststoreBytes = keyStoreService.createTrustStore(caChain, truststorePassword);
-                    validateTrustStore(truststoreBytes, truststorePassword);
-                    fileSystemService.atomicWrite(truststorePath, truststoreBytes);
-                    log.info("Truststore synchronized to {}", truststorePath);
-                } else {
-                    log.debug("Truststore at {} is already in sync with Vault. Skipping update.", truststorePath);
-                }
-                // Always check password file synchronization independently
-                writePasswordToFile(truststorePath, config.getTruststorePasswordFile(), truststorePassword);
+            if (needsUpdate) {
+                byte[] truststoreBytes = keyStoreService.createTrustStore(caChain, truststorePassword);
+                validateTrustStore(truststoreBytes, truststorePassword);
+                fileSystemService.atomicWrite(truststorePath, truststoreBytes);
+                log.info("Truststore synchronized to {}", truststorePath);
             } else {
-                log.warn("Missing CA chain in Vault. Skipping truststore synchronization.");
+                log.debug("Truststore at {} is already in sync with Vault. Skipping update.", truststorePath);
             }
-
-        }catch (Exception e) {
-                log.error("Failed to synchronize keystores to filesystem: {}", e.getMessage(), e);
-
+            // Always check password file synchronization independently
+            writePasswordToFile(truststorePath, config.getTruststorePasswordFile(), truststorePassword);
+        } else {
+            log.warn("Missing CA chain in Vault. Skipping truststore synchronization.");
         }
     }
 
@@ -128,17 +128,17 @@ public class KeyStoreSyncServiceImpl implements KeyStoreSyncService {
             if (!ks.containsAlias(alias)) return true;
 
             // 2. Check if private key matches
-            java.security.Key key = ks.getKey(alias, password.toCharArray());
+            Key key = ks.getKey(alias, password.toCharArray());
             if (key == null) return true;
-            java.security.PrivateKey existingPriv = (java.security.PrivateKey) key;
-            java.security.PrivateKey newPriv = PemUtil.parsePkcs8PrivateKey(privateKeyPem);
+            PrivateKey existingPriv = (PrivateKey) key;
+            PrivateKey newPriv = PemUtil.parsePkcs8PrivateKey(privateKeyPem);
             if (!Arrays.equals(existingPriv.getEncoded(), newPriv.getEncoded())) return true;
 
             // 3. Check certificate chain
-            java.security.cert.Certificate[] existingChain = ks.getCertificateChain(alias);
+            Certificate[] existingChain = ks.getCertificateChain(alias);
             if (existingChain == null) return true;
 
-            List<java.security.cert.X509Certificate> newChain = new java.util.ArrayList<>();
+            List<X509Certificate> newChain = new ArrayList<>();
             newChain.add(PemUtil.parseCertificate(certificatePem));
             if (caChain != null) {
                 for (String ca : caChain) {
@@ -173,8 +173,8 @@ public class KeyStoreSyncServiceImpl implements KeyStoreSyncService {
             for (int i = 0; i < caChain.size(); i++) {
                 String alias = "ca-" + i;
                 if (!ks.containsAlias(alias)) return true;
-                java.security.cert.Certificate existingCert = ks.getCertificate(alias);
-                java.security.cert.X509Certificate newCert = PemUtil.parseCertificate(caChain.get(i));
+                Certificate existingCert = ks.getCertificate(alias);
+                X509Certificate newCert = PemUtil.parseCertificate(caChain.get(i));
                 if (!Arrays.equals(existingCert.getEncoded(), newCert.getEncoded())) return true;
             }
 
@@ -187,13 +187,13 @@ public class KeyStoreSyncServiceImpl implements KeyStoreSyncService {
 
     private KeyStore loadKeyStore(Path path, String password) throws Exception {
         KeyStore ks = KeyStore.getInstance(PKCS_12);
-        try (java.io.InputStream is = Files.newInputStream(path)) {
+        try (InputStream is = Files.newInputStream(path)) {
             ks.load(is, password.toCharArray());
         }
         return ks;
     }
 
-    private String resolvePassword(String configuredPassword, String vaultSuffix) {
+    String resolvePassword(String configuredPassword, String vaultSuffix) {
         if (configuredPassword != null && !configuredPassword.isBlank()) {
             return configuredPassword;
         }
@@ -233,7 +233,6 @@ public class KeyStoreSyncServiceImpl implements KeyStoreSyncService {
                 log.debug("Password file at {} is already in sync. Skipping update.", passwordFile);
             }
         } catch (Exception e) {
-            // FileSystemService should already throw FileSystemException, but guard just in case
             log.error("Failed to write password file to {}", passwordFile, e);
             throw e;
         }
@@ -244,14 +243,12 @@ public class KeyStoreSyncServiceImpl implements KeyStoreSyncService {
             KeyStore ks = KeyStore.getInstance(PKCS_12);
             ks.load(new ByteArrayInputStream(bytes), password.toCharArray());
             if (!ks.containsAlias(alias)) {
-                throw new uk.gov.dbt.ndtp.federator.certificate.manager.exception.PkiException(
-                        "Generated keystore missing expected alias: " + alias);
+                throw new PkiException("Generated keystore missing expected alias: " + alias);
             }
-        } catch (uk.gov.dbt.ndtp.federator.certificate.manager.exception.PkiException e) {
+        } catch (PkiException e) {
             throw e;
         } catch (Exception e) {
-            throw new uk.gov.dbt.ndtp.federator.certificate.manager.exception.PkiException(
-                    "Failed to validate generated keystore", e);
+            throw new PkiException("Failed to validate generated keystore", e);
         }
     }
 
@@ -260,8 +257,7 @@ public class KeyStoreSyncServiceImpl implements KeyStoreSyncService {
             KeyStore ks = KeyStore.getInstance(PKCS_12);
             ks.load(new ByteArrayInputStream(bytes), password.toCharArray());
         } catch (Exception e) {
-            throw new uk.gov.dbt.ndtp.federator.certificate.manager.exception.PkiException(
-                    "Failed to validate generated truststore", e);
+            throw new PkiException("Failed to validate generated truststore", e);
         }
     }
 }

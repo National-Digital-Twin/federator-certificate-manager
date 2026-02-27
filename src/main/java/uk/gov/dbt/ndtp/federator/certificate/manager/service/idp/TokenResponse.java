@@ -14,7 +14,7 @@ import lombok.ToString;
  * Immutable value object representing an OAuth2 access token response.
  */
 @Getter
-@ToString
+@ToString(exclude = "accessToken")
 public class TokenResponse {
     private final String accessToken;
     private final long expiresIn;

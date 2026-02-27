@@ -16,7 +16,7 @@ public class KeyStoreCreationException extends RuntimeException {
      * @param message the detail message
      * @param cause the cause of the exception
      */
-    public KeyStoreCreationException(String message, Exception cause) {
+    public KeyStoreCreationException(String message, Throwable cause) {
         super(message, cause);
     }
 }

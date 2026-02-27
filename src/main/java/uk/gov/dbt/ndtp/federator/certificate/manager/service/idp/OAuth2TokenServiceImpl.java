@@ -58,7 +58,7 @@ public class OAuth2TokenServiceImpl implements OAuth2TokenService {
      */
     @Override
     public TokenResponse getAccessToken() {
-        log.info("Requesting OAuth2 token from {}", tokenUri);
+        log.debug("Requesting OAuth2 token from {}", tokenUri);
         MultiValueMap<String, String> formData = new LinkedMultiValueMap<>();
         formData.add(GRANT_TYPE, CLIENT_CREDENTIALS);
         formData.add(CLIENT_ID, clientId);
@@ -78,10 +78,13 @@ public class OAuth2TokenServiceImpl implements OAuth2TokenService {
                 log.info("Successfully retrieved access token, expires in {} seconds", expiresIn);
                 return new TokenResponse(token, expiresIn);
             } else {
-                log.error("Token response did not contain access_token: {}", response);
-                throw new OAuth2TokenException(
-                        "Failed to retrieve access token. Missing access_token in response: " + response);
+                log.error(
+                        "Token response did not contain access_token: {}",
+                        response != null ? response.keySet() : "null");
+                throw new OAuth2TokenException("Failed to retrieve access token. Missing access_token in response.");
             }
+        } catch (OAuth2TokenException e) {
+            throw e;
         } catch (Exception e) {
             log.error("Error retrieving OAuth2 token", e);
             throw new OAuth2TokenException("Error retrieving OAuth2 token", e);

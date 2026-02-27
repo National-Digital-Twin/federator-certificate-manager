@@ -9,16 +9,14 @@ package uk.gov.dbt.ndtp.federator.certificate.manager;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
-import org.springframework.scheduling.annotation.EnableScheduling;
 
 /**
  * Main application class for the Federator Certificate Management service.
- * This class initializes the Spring Boot application and enables scheduling.
+ * This class initializes the Spring Boot application.
  */
 @Slf4j
-@EnableScheduling
 @SpringBootApplication
-public class ApplicationRunner {
+public class CertificateManagerApplication {
     public static final String STARTING_MSG = "Starting federator Certificate Management service";
 
     /**
@@ -28,6 +26,6 @@ public class ApplicationRunner {
      */
     public static void main(final String[] args) {
         log.info(STARTING_MSG);
-        SpringApplication.run(ApplicationRunner.class, args);
+        SpringApplication.run(CertificateManagerApplication.class, args);
     }
 }

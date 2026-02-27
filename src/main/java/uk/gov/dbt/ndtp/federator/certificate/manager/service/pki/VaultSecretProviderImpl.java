@@ -6,7 +6,10 @@
 
 package uk.gov.dbt.ndtp.federator.certificate.manager.service.pki;
 
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -35,6 +38,7 @@ public class VaultSecretProviderImpl implements VaultSecretProvider {
     private final VaultTemplate vaultTemplate;
     private final String mountPath; // e.g. "node-net"
     private final String baseRelativePath; // e.g. "client"
+    private volatile boolean mountVerified;
 
     /**
      * Constructs the VaultSecretProviderImpl.
@@ -61,8 +65,7 @@ public class VaultSecretProviderImpl implements VaultSecretProvider {
         ensureKvMountExists();
 
         String relativePath = getRelativePath(KEYPAIR);
-        String logPath = mountPath + STRING_DELIMITER + relativePath;
-        log.info("Persisting key pair to Vault path: {} (KV v2)", logPath);
+        log.debug("Persisting key pair to Vault path: {}/{} (KV v2)", mountPath, relativePath);
 
         Map<String, String> keyPairMap = new HashMap<>();
         keyPairMap.put(PUBLIC_KEY, keyPairDto.getPublicKeyPem());
@@ -81,7 +84,7 @@ public class VaultSecretProviderImpl implements VaultSecretProvider {
         ensureKvMountExists();
 
         String relativePath = getRelativePath(CERTIFICATE);
-        log.info("Persisting certificate to Vault path: {}/{} (KV v2)", mountPath, relativePath);
+        log.debug("Persisting certificate to Vault path: {}/{} (KV v2)", mountPath, relativePath);
 
         Map<String, String> data = new HashMap<>();
         data.put(CERTIFICATE, certificate);
@@ -95,11 +98,11 @@ public class VaultSecretProviderImpl implements VaultSecretProvider {
      * @param caChain the list of certificates in the chain in PEM format
      */
     @Override
-    public void persistCaChain(java.util.List<String> caChain) {
+    public void persistCaChain(List<String> caChain) {
         ensureKvMountExists();
 
         String relativePath = getRelativePath("ca-chain");
-        log.info("Persisting CA chain to Vault path: {}/{} (KV v2)", mountPath, relativePath);
+        log.debug("Persisting CA chain to Vault path: {}/{} (KV v2)", mountPath, relativePath);
 
         String chain = String.join("\n", caChain);
         Map<String, String> data = new HashMap<>();
@@ -118,7 +121,7 @@ public class VaultSecretProviderImpl implements VaultSecretProvider {
         ensureKvMountExists();
 
         String relativePath = getRelativePath("intermediate-ca");
-        log.info("Persisting Intermediate CA to Vault path: {}/{} (KV v2)", mountPath, relativePath);
+        log.debug("Persisting Intermediate CA to Vault path: {}/{} (KV v2)", mountPath, relativePath);
 
         Map<String, String> data = new HashMap<>();
         data.put(CERTIFICATE, intermediateCa);
@@ -166,8 +169,10 @@ public class VaultSecretProviderImpl implements VaultSecretProvider {
                 return null;
             }
             Map<String, Object> data = versioned.getData();
-            String publicKey = (String) data.get(PUBLIC_KEY);
-            String privateKey = (String) data.get(PRIVATE_KEY);
+            Object publicKeyObj = data.get(PUBLIC_KEY);
+            Object privateKeyObj = data.get(PRIVATE_KEY);
+            String publicKey = publicKeyObj instanceof String s ? s : null;
+            String privateKey = privateKeyObj instanceof String s ? s : null;
             return CreateKeyResponseDTO.builder()
                     .publicKeyPem(publicKey)
                     .privateKeyPem(privateKey)
@@ -179,16 +184,16 @@ public class VaultSecretProviderImpl implements VaultSecretProvider {
     }
 
     @Override
-    public java.util.List<String> getCaChain() {
+    public List<String> getCaChain() {
         ensureKvMountExists();
         String relativePath = getRelativePath("ca-chain");
-        log.info("Retrieving CA chain from Vault path: {}/{} (KV v2)", mountPath, relativePath);
+        log.debug("Retrieving CA chain from Vault path: {}/{} (KV v2)", mountPath, relativePath);
         try {
             VaultVersionedKeyValueOperations kv = vaultTemplate.opsForVersionedKeyValue(mountPath);
             Versioned<Map<String, Object>> versioned = kv.get(relativePath);
             if (versioned == null || versioned.getData() == null) {
                 log.warn("No CA chain found at {}/{}", mountPath, relativePath);
-                return java.util.Collections.emptyList();
+                return Collections.emptyList();
             }
             String chainStr = (String) versioned.getData().get("chain");
             return splitPemChain(chainStr);
@@ -198,12 +203,12 @@ public class VaultSecretProviderImpl implements VaultSecretProvider {
         }
     }
 
-    private java.util.List<String> splitPemChain(String pemChain) {
+    private List<String> splitPemChain(String pemChain) {
         if (pemChain == null || pemChain.isBlank()) {
-            return java.util.Collections.emptyList();
+            return Collections.emptyList();
         }
         String[] parts = pemChain.split("-----END CERTIFICATE-----");
-        java.util.List<String> certs = new java.util.ArrayList<>();
+        List<String> certs = new ArrayList<>();
         for (String part : parts) {
             String block = part.trim();
             if (!block.isBlank()) {
@@ -220,7 +225,7 @@ public class VaultSecretProviderImpl implements VaultSecretProvider {
     public String getIntermediateCa() {
         ensureKvMountExists();
         String relativePath = getRelativePath("intermediate-ca");
-        log.info("Retrieving Intermediate CA from Vault path: {}/{} (KV v2)", mountPath, relativePath);
+        log.debug("Retrieving Intermediate CA from Vault path: {}/{} (KV v2)", mountPath, relativePath);
         try {
             VaultVersionedKeyValueOperations kv = vaultTemplate.opsForVersionedKeyValue(mountPath);
             Versioned<Map<String, Object>> versioned = kv.get(relativePath);
@@ -243,7 +248,7 @@ public class VaultSecretProviderImpl implements VaultSecretProvider {
     public void persistSecret(String suffix, Map<String, String> secret) {
         ensureKvMountExists();
         String relativePath = getRelativePath(suffix);
-        log.info("Persisting secret to Vault path: {}/{} (KV v2)", mountPath, relativePath);
+        log.debug("Persisting secret to Vault path: {}/{} (KV v2)", mountPath, relativePath);
         persist(relativePath, secret, "generic secret [" + suffix + "]");
     }
 
@@ -280,8 +285,12 @@ public class VaultSecretProviderImpl implements VaultSecretProvider {
     /**
      * Ensures the KV (v2) engine is mounted at the configured mountPath.
      * If the mount does not exist, it will throw a VaultException.
+     * Result is cached after first successful check.
      */
-    private void ensureKvMountExists() {
+    void ensureKvMountExists() {
+        if (mountVerified) {
+            return;
+        }
         try {
             VaultSysOperations sys = vaultTemplate.opsForSys();
             Map<String, VaultMount> mounts = sys.getMounts();
@@ -290,6 +299,7 @@ public class VaultSecretProviderImpl implements VaultSecretProvider {
                 log.error("Vault mount '{}' not found. Please provision KV v2 at this path.", key);
                 throw new VaultException("Vault mount '" + key + "' not found. Required for secret persistence.");
             }
+            mountVerified = true;
         } catch (VaultException e) {
             throw e;
         } catch (Exception e) {

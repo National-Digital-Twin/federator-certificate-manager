@@ -6,6 +6,8 @@
 
 package uk.gov.dbt.ndtp.federator.certificate.manager.service.pki;
 
+import java.util.List;
+import java.util.Map;
 import uk.gov.dbt.ndtp.federator.certificate.manager.exception.VaultException;
 import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.CreateKeyResponseDTO;
 
@@ -37,7 +39,7 @@ public interface VaultSecretProvider {
      * @param caChain the list of certificates in the chain in PEM format
      * @throws VaultException if persistence fails
      */
-    void persistCaChain(java.util.List<String> caChain);
+    void persistCaChain(List<String> caChain);
 
     /**
      * Persists the Intermediate CA certificate to the configured Vault secret path.
@@ -69,7 +71,7 @@ public interface VaultSecretProvider {
      * @return the list of certificates in the chain in PEM format, or null if not found
      * @throws VaultException if retrieval fails
      */
-    java.util.List<String> getCaChain();
+    List<String> getCaChain();
 
     /**
      * Retrieves the Intermediate CA certificate from the configured Vault secret path.
@@ -86,7 +88,7 @@ public interface VaultSecretProvider {
      * @param secret the secret data as a map
      * @throws VaultException if persistence fails
      */
-    void persistSecret(String suffix, java.util.Map<String, String> secret);
+    void persistSecret(String suffix, Map<String, String> secret);
 
     /**
      * Retrieves a generic secret from the configured Vault secret path.
@@ -95,5 +97,5 @@ public interface VaultSecretProvider {
      * @return the secret data as a map, or null if not found
      * @throws VaultException if retrieval fails
      */
-    java.util.Map<String, Object> getSecret(String suffix);
+    Map<String, Object> getSecret(String suffix);
 }

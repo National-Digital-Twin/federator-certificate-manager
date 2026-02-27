@@ -8,13 +8,17 @@ package uk.gov.dbt.ndtp.federator.certificate.manager.config;
 
 import java.io.FileInputStream;
 import java.security.KeyStore;
+import java.util.concurrent.TimeUnit;
 import javax.net.ssl.SSLContext;
+import org.apache.hc.client5.http.config.ConnectionConfig;
+import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
 import org.apache.hc.client5.http.io.HttpClientConnectionManager;
 import org.apache.hc.client5.http.ssl.DefaultClientTlsStrategy;
 import org.apache.hc.core5.ssl.SSLContextBuilder;
+import org.apache.hc.core5.util.Timeout;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -45,13 +49,12 @@ public class RestClientConfig {
     private String keyStoreType;
 
     /**
-     * Creates a RestClient bean configured for mTLS communication.
-     * Loads the keystore and truststore from the configured paths and passwords.
+     * Creates a CloseableHttpClient bean configured for mTLS communication with timeouts.
      *
-     * @return a configured RestClient instance
+     * @return a configured CloseableHttpClient instance
      */
     @Bean
-    public RestClient mtlsRestClient() {
+    public CloseableHttpClient httpClient() {
         try {
             KeyStore keyStore = loadKeyStore(keyStorePath, keyStorePassword, keyStoreType);
             KeyStore trustStore = loadKeyStore(trustStorePath, trustStorePassword, keyStoreType);
@@ -61,21 +64,41 @@ public class RestClientConfig {
                     .loadTrustMaterial(trustStore, null)
                     .build();
 
+            ConnectionConfig connectionConfig = ConnectionConfig.custom()
+                    .setConnectTimeout(Timeout.of(10, TimeUnit.SECONDS))
+                    .setSocketTimeout(Timeout.of(30, TimeUnit.SECONDS))
+                    .build();
+
             HttpClientConnectionManager cm = PoolingHttpClientConnectionManagerBuilder.create()
                     .setTlsSocketStrategy(new DefaultClientTlsStrategy(sslContext))
+                    .setDefaultConnectionConfig(connectionConfig)
                     .build();
 
-            CloseableHttpClient httpClient = HttpClients.custom()
+            RequestConfig requestConfig = RequestConfig.custom()
+                    .setResponseTimeout(Timeout.of(30, TimeUnit.SECONDS))
+                    .build();
+
+            return HttpClients.custom()
                     .setConnectionManager(cm)
+                    .setDefaultRequestConfig(requestConfig)
                     .evictExpiredConnections()
                     .build();
-
-            return RestClient.builder()
-                    .requestFactory(new HttpComponentsClientHttpRequestFactory(httpClient))
-                    .build();
         } catch (Exception e) {
-            throw new RestClientConfigurationException("Failed to configure mTLS RestClient", e);
+            throw new RestClientConfigurationException("Failed to configure mTLS HttpClient", e);
         }
+    }
+
+    /**
+     * Creates a RestClient bean configured for mTLS communication.
+     *
+     * @param httpClient the mTLS-enabled HttpClient
+     * @return a configured RestClient instance
+     */
+    @Bean
+    public RestClient mtlsRestClient(CloseableHttpClient httpClient) {
+        return RestClient.builder()
+                .requestFactory(new HttpComponentsClientHttpRequestFactory(httpClient))
+                .build();
     }
 
     private KeyStore loadKeyStore(String path, String password, String type) {

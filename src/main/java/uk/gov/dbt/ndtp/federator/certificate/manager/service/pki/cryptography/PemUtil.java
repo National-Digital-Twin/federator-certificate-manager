@@ -110,6 +110,7 @@ public final class PemUtil {
             Instant notAfter = cert.getNotAfter().toInstant();
             return now.until(notAfter, ChronoUnit.DAYS);
         } catch (Exception e) {
+            log.warn("Failed to calculate days until expiry: {}", e.getMessage());
             return Long.MIN_VALUE; // indicates invalid/unparseable certificate
         }
     }
@@ -143,10 +144,10 @@ public final class PemUtil {
             String issuerSubject = issuer.getSubjectX500Principal().getName();
             String issuerCn = extractCn(issuerSubject);
 
-            log.info("Certificate for {} is validated against Intermediate Cert CN {}", certSubject, issuerCn);
-            log.info("Certificate Issue Date: {}", cert.getNotBefore());
-            log.info("Certificate Expiry Date: {}", cert.getNotAfter());
-            log.info("Verified against Issuer Subject: {}", issuerSubject);
+            log.debug("Certificate for {} is validated against Intermediate Cert CN {}", certSubject, issuerCn);
+            log.debug("Certificate Issue Date: {}", cert.getNotBefore());
+            log.debug("Certificate Expiry Date: {}", cert.getNotAfter());
+            log.debug("Verified against Issuer Subject: {}", issuerSubject);
 
             // Check both validity and expiry against time
             cert.checkValidity();
@@ -184,6 +185,7 @@ public final class PemUtil {
             double percentageRemaining = (double) remainingDuration / totalDuration * 100;
             return percentageRemaining <= thresholdPercentage;
         } catch (Exception e) {
+            log.warn("Failed to check validity threshold: {}", e.getMessage());
             return true; // If unparseable, assume it needs renewal
         }
     }

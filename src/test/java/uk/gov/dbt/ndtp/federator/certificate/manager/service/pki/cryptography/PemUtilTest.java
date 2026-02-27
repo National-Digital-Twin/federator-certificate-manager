@@ -25,6 +25,7 @@ import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
 import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.junit.jupiter.api.Test;
+import uk.gov.dbt.ndtp.federator.certificate.manager.exception.PkiException;
 
 class PemUtilTest {
 
@@ -38,15 +39,12 @@ class PemUtilTest {
         X500Name caName = new X500Name("CN=CA");
         X500Name leafName = new X500Name("CN=Leaf");
 
-        // Create CA cert (self-signed)
         X509Certificate caCert = createCert(caName, caName, caKeyPair.getPublic(), caKeyPair.getPrivate());
-        // Create leaf cert signed by CA
         X509Certificate leafCert = createCert(leafName, caName, leafKeyPair.getPublic(), caKeyPair.getPrivate());
 
         String caPem = PemUtil.toPem("CERTIFICATE", caCert.getEncoded());
         String leafPem = PemUtil.toPem("CERTIFICATE", leafCert.getEncoded());
 
-        // Should not throw
         PemUtil.verifyCertificate(leafPem, caPem);
     }
 
@@ -63,18 +61,36 @@ class PemUtilTest {
 
         X509Certificate caCert2 = createCert(
                 new X500Name("CN=CA2"), new X500Name("CN=CA2"), caKeyPair2.getPublic(), caKeyPair2.getPrivate());
-        // Leaf signed by CA1
         X509Certificate leafCert = createCert(leafName, caName1, leafKeyPair.getPublic(), caKeyPair1.getPrivate());
 
         String leafPem = PemUtil.toPem("CERTIFICATE", leafCert.getEncoded());
         String caPem2 = PemUtil.toPem("CERTIFICATE", caCert2.getEncoded());
 
-        assertThrows(Exception.class, () -> PemUtil.verifyCertificate(leafPem, caPem2));
+        assertThrows(PkiException.class, () -> PemUtil.verifyCertificate(leafPem, caPem2));
     }
 
     @Test
     void daysUntilExpiry_handlesException() {
         assertEquals(Long.MIN_VALUE, PemUtil.daysUntilExpiry("invalid"));
+    }
+
+    @Test
+    void daysUntilExpiry_returnsPositiveDays() throws Exception {
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+        kpg.initialize(2048);
+        KeyPair kp = kpg.generateKeyPair();
+        X500Name name = new X500Name("CN=Test");
+        long now = System.currentTimeMillis();
+        Date start = new Date(now);
+        Date end = new Date(now + (1000L * 60 * 60 * 24 * 30)); // 30 days
+        ContentSigner signer = new JcaContentSignerBuilder("SHA256withRSA").build(kp.getPrivate());
+        X509v3CertificateBuilder builder =
+                new JcaX509v3CertificateBuilder(name, BigInteger.valueOf(now), start, end, name, kp.getPublic());
+        X509Certificate cert = new JcaX509CertificateConverter().getCertificate(builder.build(signer));
+        String pem = PemUtil.toPem("CERTIFICATE", cert.getEncoded());
+
+        long days = PemUtil.daysUntilExpiry(pem);
+        assertTrue(days >= 29);
     }
 
     @Test
@@ -87,7 +103,6 @@ class PemUtilTest {
         X500Name caName = new X500Name("CN=CA");
         X500Name leafName = new X500Name("CN=Leaf");
 
-        // Create expired cert
         long past = System.currentTimeMillis() - 1000000;
         Date start = new Date(past);
         Date end = new Date(past + 1000);
@@ -101,8 +116,7 @@ class PemUtilTest {
         String leafPem = PemUtil.toPem("CERTIFICATE", expiredCert.getEncoded());
         String caPem = PemUtil.toPem("CERTIFICATE", caCert.getEncoded());
 
-        // Should throw CertificateExpiredException or similar wrapped in Exception
-        assertThrows(Exception.class, () -> PemUtil.verifyCertificate(leafPem, caPem));
+        assertThrows(PkiException.class, () -> PemUtil.verifyCertificate(leafPem, caPem));
     }
 
     private X509Certificate createCert(X500Name subject, X500Name issuer, PublicKey pubKey, PrivateKey privKey)
@@ -133,7 +147,6 @@ class PemUtilTest {
         assertEquals("RSA", parsedPriv.getAlgorithm());
         assertEquals("RSA", parsedPub.getAlgorithm());
 
-        // Ensure keys are correct by reconstructing via standard factories
         PrivateKey reconstructedPriv =
                 KeyFactory.getInstance("RSA").generatePrivate(new PKCS8EncodedKeySpec(parsedPriv.getEncoded()));
         PublicKey reconstructedPub =
@@ -164,7 +177,6 @@ class PemUtilTest {
         KeyPair kp = kpg.generateKeyPair();
         X500Name name = new X500Name("CN=Test");
 
-        // Create cert valid for ~1.15 days
         long now = System.currentTimeMillis();
         Date start = new Date(now);
         Date end = new Date(now + (1000L * 60 * 60 * 24 * 2)); // 2 days from now
@@ -178,12 +190,8 @@ class PemUtilTest {
         assertTrue(PemUtil.isValidForAtLeastDays(pem, 1));
     }
 
-
-
     @Test
     void extractCn_directTest() throws Exception {
-        // Since it is private, we can't test it directly easily without reflection,
-        // but we can test verifyCertificate with various DNs.
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
         kpg.initialize(2048);
         KeyPair caKeyPair = kpg.generateKeyPair();
@@ -201,5 +209,65 @@ class PemUtilTest {
 
         // Should work and log "Unknown" for CN
         PemUtil.verifyCertificate(leafPem, caPem);
+    }
+
+    @Test
+    void parseCertificate_throwsForInvalidPem() {
+        assertThrows(PkiException.class, () -> PemUtil.parseCertificate("not-a-cert"));
+    }
+
+    @Test
+    void parsePkcs8PrivateKey_throwsForInvalidPem() {
+        assertThrows(PkiException.class, () -> PemUtil.parsePkcs8PrivateKey("not-a-key"));
+    }
+
+    @Test
+    void parsePublicKey_throwsForInvalidPem() {
+        assertThrows(PkiException.class, () -> PemUtil.parsePublicKey("not-a-key"));
+    }
+
+    @Test
+    void isValidityBelowThreshold_returnsTrueWhenBelowThreshold() throws Exception {
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+        kpg.initialize(2048);
+        KeyPair kp = kpg.generateKeyPair();
+        X500Name name = new X500Name("CN=Test");
+
+        long now = System.currentTimeMillis();
+        // Total: 100 days. Elapsed: 95 days. Remaining: 5 days (~5%)
+        Date start = new Date(now - 3600000L * 24 * 95);
+        Date end = new Date(now + 3600000L * 24 * 5);
+        ContentSigner signer = new JcaContentSignerBuilder("SHA256withRSA").build(kp.getPrivate());
+        X509v3CertificateBuilder builder =
+                new JcaX509v3CertificateBuilder(name, BigInteger.valueOf(now), start, end, name, kp.getPublic());
+        X509Certificate cert = new JcaX509CertificateConverter().getCertificate(builder.build(signer));
+        String pem = PemUtil.toPem("CERTIFICATE", cert.getEncoded());
+
+        assertTrue(PemUtil.isValidityBelowThreshold(pem, 10.0));
+    }
+
+    @Test
+    void isValidityBelowThreshold_returnsFalseWhenAboveThreshold() throws Exception {
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+        kpg.initialize(2048);
+        KeyPair kp = kpg.generateKeyPair();
+        X500Name name = new X500Name("CN=Test");
+
+        long now = System.currentTimeMillis();
+        // Total: 100 days. Elapsed: 5 days. Remaining: 95 days (~95%)
+        Date start = new Date(now - 3600000L * 24 * 5);
+        Date end = new Date(now + 3600000L * 24 * 95);
+        ContentSigner signer = new JcaContentSignerBuilder("SHA256withRSA").build(kp.getPrivate());
+        X509v3CertificateBuilder builder =
+                new JcaX509v3CertificateBuilder(name, BigInteger.valueOf(now), start, end, name, kp.getPublic());
+        X509Certificate cert = new JcaX509CertificateConverter().getCertificate(builder.build(signer));
+        String pem = PemUtil.toPem("CERTIFICATE", cert.getEncoded());
+
+        assertFalse(PemUtil.isValidityBelowThreshold(pem, 10.0));
+    }
+
+    @Test
+    void isValidityBelowThreshold_returnsTrueForInvalidPem() {
+        assertTrue(PemUtil.isValidityBelowThreshold("invalid-pem", 10.0));
     }
 }

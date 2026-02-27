@@ -25,7 +25,9 @@ public class CertificateSyncJob {
     /**
      * Periodically executed task to synchronize on-disk keystores and truststores with Vault.
      */
-    @Scheduled(fixedRateString = "${application.scheduling.certificate-manager.sync-rate}")
+    @Scheduled(
+            fixedDelayString = "${application.scheduling.certificate-manager.sync-rate}",
+            initialDelayString = "${application.scheduling.certificate-manager.sync-initial-delay:5000}")
     public void execute() {
         log.debug("Executing Certificate Sync Job");
         try {

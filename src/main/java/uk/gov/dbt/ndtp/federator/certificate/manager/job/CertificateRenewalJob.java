@@ -25,7 +25,9 @@ public class CertificateRenewalJob {
     /**
      * Periodically executed task to check certificate status and initiate renewal if necessary.
      */
-    @Scheduled(fixedRateString = "${application.scheduling.certificate-manager.renewal-rate}")
+    @Scheduled(
+            fixedDelayString = "${application.scheduling.certificate-manager.renewal-rate}",
+            initialDelayString = "${application.scheduling.certificate-manager.renewal-initial-delay:10000}")
     public void execute() {
         log.debug("Executing Certificate Renewal Job");
         try {

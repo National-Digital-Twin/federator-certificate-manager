@@ -38,7 +38,20 @@ class PkiServiceTest {
     }
 
     @Test
-    void createCsr_success() throws Exception {
+    void createKeyPair_verifyPublicKeyPemFormat() {
+        CreateKeyResponseDTO response = pkiService.createKeyPair("RSA", 2048);
+        assertNotNull(response.getPublicKeyPem());
+        assertTrue(response.getPublicKeyPem().contains("-----BEGIN PUBLIC KEY-----"));
+        assertTrue(response.getPublicKeyPem().contains("-----END PUBLIC KEY-----"));
+    }
+
+    @Test
+    void createKeyPair_throwsForInvalidAlgorithm() {
+        assertThrows(PkiException.class, () -> pkiService.createKeyPair("INVALID_ALGO", 2048));
+    }
+
+    @Test
+    void createCsr_success() {
         CreateKeyResponseDTO keyPair = pkiService.createKeyPair("RSA", 2048);
 
         CreateCsrRequestDTO req = CreateCsrRequestDTO.builder()
@@ -57,7 +70,22 @@ class PkiServiceTest {
     }
 
     @Test
-    void createCsr_noSans() throws Exception {
+    void createCsr_verifyCsrId() {
+        CreateKeyResponseDTO keyPair = pkiService.createKeyPair("RSA", 2048);
+
+        CreateCsrRequestDTO req = CreateCsrRequestDTO.builder()
+                .commonName("test.com")
+                .privateKeyPem(keyPair.getPrivateKeyPem())
+                .publicKeyPem(keyPair.getPublicKeyPem())
+                .build();
+
+        CreateCsrResponseDTO response = pkiService.createCsr(req);
+        assertNotNull(response.getCsrId());
+        assertFalse(response.getCsrId().isBlank());
+    }
+
+    @Test
+    void createCsr_noSans() {
         CreateKeyResponseDTO keyPair = pkiService.createKeyPair("RSA", 2048);
 
         CreateCsrRequestDTO req = CreateCsrRequestDTO.builder()

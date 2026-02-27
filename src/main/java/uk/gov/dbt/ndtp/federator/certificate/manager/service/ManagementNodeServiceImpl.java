@@ -60,7 +60,7 @@ public class ManagementNodeServiceImpl implements ManagementNodeService {
         String token = tokenCacheService.getToken();
         String url = baseUrl + INTERMEDIATE_CERT_PATH;
 
-        log.info("Requesting intermediate certificate from {}", url);
+        log.debug("Requesting intermediate certificate from {}", url);
 
         try {
             return restClient
@@ -70,7 +70,6 @@ public class ManagementNodeServiceImpl implements ManagementNodeService {
                     .retrieve()
                     .body(CertificateResponseDTO.class);
         } catch (Exception e) {
-            log.error("Failed to retrieve intermediate certificate", e);
             throw new ManagementNodeException("Failed to retrieve intermediate certificate", e);
         }
     }
@@ -86,7 +85,7 @@ public class ManagementNodeServiceImpl implements ManagementNodeService {
         String token = tokenCacheService.getToken();
         String url = baseUrl + SIGN_CSR_PATH;
 
-        log.info("Requesting certificate signing from {}", url);
+        log.debug("Requesting certificate signing from {}", url);
 
         try {
             return restClient
@@ -97,7 +96,6 @@ public class ManagementNodeServiceImpl implements ManagementNodeService {
                     .retrieve()
                     .body(SignCertResponseDTO.class);
         } catch (Exception e) {
-            log.error("Failed to sign certificate", e);
             throw new ManagementNodeException("Failed to sign certificate", e);
         }
     }

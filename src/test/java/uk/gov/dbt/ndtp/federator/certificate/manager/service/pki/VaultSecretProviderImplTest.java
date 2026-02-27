@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.eq;
@@ -19,6 +20,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import java.util.Collections;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -58,8 +61,7 @@ class VaultSecretProviderImplTest {
         when(vaultTemplate.opsForSys()).thenReturn(sysOps);
         // Default: mount exists
         when(sysOps.getMounts())
-                .thenReturn(java.util.Map.of(
-                        "node-net/", VaultMount.builder().type("kv").build()));
+                .thenReturn(Map.of("node-net/", VaultMount.builder().type("kv").build()));
         when(vaultTemplate.opsForVersionedKeyValue("node-net")).thenReturn(kvOps);
     }
 
@@ -72,7 +74,6 @@ class VaultSecretProviderImplTest {
 
         vaultSecretProvider.persistKeyPair(dto);
 
-        // Verify mount is checked but NOT attempted (read-only)
         verify(sysOps, times(1)).getMounts();
         verify(sysOps, times(0)).mount(any(), any());
         verify(kvOps, times(1)).put(eq("client/keypair"), anyMap());
@@ -81,8 +82,7 @@ class VaultSecretProviderImplTest {
     @Test
     void persistKeyPair_mountAlreadyExists() {
         when(sysOps.getMounts())
-                .thenReturn(java.util.Map.of(
-                        "node-net/", VaultMount.builder().type("kv").build()));
+                .thenReturn(Map.of("node-net/", VaultMount.builder().type("kv").build()));
 
         CreateKeyResponseDTO dto = CreateKeyResponseDTO.builder()
                 .publicKeyPem("public")
@@ -91,19 +91,17 @@ class VaultSecretProviderImplTest {
 
         vaultSecretProvider.persistKeyPair(dto);
 
-        // Verify mount is NOT attempted if it already exists
         verify(sysOps, times(0)).mount(eq("node-net"), any(VaultMount.class));
         verify(kvOps, times(1)).put(eq("client/keypair"), anyMap());
     }
 
     @Test
     void constructor_edgeCases() {
-        // Test split logic in constructor
         VaultSecretProviderImpl provider1 = new VaultSecretProviderImpl(vaultTemplate, "simplemount");
 
         when(sysOps.getMounts())
-                .thenReturn(java.util.Map.of(
-                        "simplemount/", VaultMount.builder().type("kv").build()));
+                .thenReturn(
+                        Map.of("simplemount/", VaultMount.builder().type("kv").build()));
 
         CreateKeyResponseDTO dto = CreateKeyResponseDTO.builder()
                 .publicKeyPem("public")
@@ -132,7 +130,6 @@ class VaultSecretProviderImplTest {
 
     @Test
     void ensureKvMountExists_failure() {
-        // Force opsForSys to throw, triggering catch in ensureKvMountExists
         when(vaultTemplate.opsForSys()).thenThrow(new RuntimeException("sys unavailable"));
 
         CreateKeyResponseDTO dto = CreateKeyResponseDTO.builder()
@@ -141,8 +138,15 @@ class VaultSecretProviderImplTest {
                 .build();
 
         assertThrows(VaultException.class, () -> vaultSecretProvider.persistKeyPair(dto));
-        // Since mount step failed early, no KV ops should be attempted
         verify(kvOps, times(0)).put(any(), anyMap());
+    }
+
+    @Test
+    void ensureKvMountExists_throwsWhenMountNotFound() {
+        when(sysOps.getMounts()).thenReturn(Collections.emptyMap());
+
+        VaultSecretProviderImpl provider = new VaultSecretProviderImpl(vaultTemplate, BASE_PATH);
+        assertThrows(VaultException.class, () -> provider.ensureKvMountExists());
     }
 
     @Test
@@ -153,11 +157,25 @@ class VaultSecretProviderImplTest {
     }
 
     @Test
+    void persistCertificate_failure() {
+        doThrow(new RuntimeException("Vault down")).when(kvOps).put(eq("client/certificate"), anyMap());
+
+        assertThrows(VaultException.class, () -> vaultSecretProvider.persistCertificate("cert-pem"));
+    }
+
+    @Test
     void persistCaChain_success() {
-        java.util.List<String> chain = java.util.List.of("cert1", "cert2");
+        List<String> chain = List.of("cert1", "cert2");
         vaultSecretProvider.persistCaChain(chain);
         verify(sysOps, times(1)).getMounts();
         verify(kvOps, times(1)).put(eq("client/ca-chain"), anyMap());
+    }
+
+    @Test
+    void persistCaChain_failure() {
+        doThrow(new RuntimeException("Vault down")).when(kvOps).put(eq("client/ca-chain"), anyMap());
+
+        assertThrows(VaultException.class, () -> vaultSecretProvider.persistCaChain(List.of("cert")));
     }
 
     @Test
@@ -165,6 +183,40 @@ class VaultSecretProviderImplTest {
         vaultSecretProvider.persistIntermediateCa("-----BEGIN CERTIFICATE-----\nINT\n-----END CERTIFICATE-----\n");
         verify(sysOps, times(1)).getMounts();
         verify(kvOps, times(1)).put(eq("client/intermediate-ca"), anyMap());
+    }
+
+    @Test
+    void persistIntermediateCa_failure() {
+        doThrow(new RuntimeException("Vault down")).when(kvOps).put(eq("client/intermediate-ca"), anyMap());
+
+        assertThrows(VaultException.class, () -> vaultSecretProvider.persistIntermediateCa("cert"));
+    }
+
+    @Test
+    void getCertificate_success() {
+        Versioned<Map<String, Object>> versioned = mock(Versioned.class);
+        when(versioned.getData()).thenReturn(Map.of("certificate", "cert-content"));
+        when(kvOps.get("client/certificate")).thenReturn(versioned);
+
+        String result = vaultSecretProvider.getCertificate();
+
+        assertEquals("cert-content", result);
+    }
+
+    @Test
+    void getCertificate_notFound() {
+        when(kvOps.get("client/certificate")).thenReturn(null);
+
+        String result = vaultSecretProvider.getCertificate();
+
+        assertNull(result);
+    }
+
+    @Test
+    void getCertificate_failure() {
+        when(kvOps.get("client/certificate")).thenThrow(new RuntimeException("read failed"));
+
+        assertThrows(VaultException.class, () -> vaultSecretProvider.getCertificate());
     }
 
     @Test
@@ -223,6 +275,13 @@ class VaultSecretProviderImplTest {
     }
 
     @Test
+    void getSecret_failure() {
+        when(kvOps.get("client/test-secret")).thenThrow(new RuntimeException("read failed"));
+
+        assertThrows(VaultException.class, () -> vaultSecretProvider.getSecret("test-secret"));
+    }
+
+    @Test
     void getKeyPair_success() {
         Versioned<Map<String, Object>> versioned = mock(Versioned.class);
         when(versioned.getData())
@@ -239,19 +298,155 @@ class VaultSecretProviderImplTest {
     }
 
     @Test
+    void getKeyPair_notFound() {
+        when(kvOps.get("client/keypair")).thenReturn(null);
+
+        CreateKeyResponseDTO result = vaultSecretProvider.getKeyPair();
+
+        assertNull(result);
+    }
+
+    @Test
+    void getKeyPair_failure() {
+        when(kvOps.get("client/keypair")).thenThrow(new RuntimeException("read failed"));
+
+        assertThrows(VaultException.class, () -> vaultSecretProvider.getKeyPair());
+    }
+
+    @Test
     void getCaChain_success() {
         Versioned<Map<String, Object>> versioned = mock(Versioned.class);
-        String chain = new StringBuilder()
-                .append("-----BEGIN CERTIFICATE-----\nC1\n-----END CERTIFICATE-----\n")
-                .append("-----BEGIN CERTIFICATE-----\nC2\n-----END CERTIFICATE-----")
-                .toString();
+        String chain = "-----BEGIN CERTIFICATE-----\nC1\n-----END CERTIFICATE-----\n"
+                + "-----BEGIN CERTIFICATE-----\nC2\n-----END CERTIFICATE-----";
         when(versioned.getData()).thenReturn(Map.of("chain", chain));
         when(kvOps.get("client/ca-chain")).thenReturn(versioned);
 
-        java.util.List<String> result = vaultSecretProvider.getCaChain();
+        List<String> result = vaultSecretProvider.getCaChain();
 
         assertEquals(2, result.size());
         assertEquals("-----BEGIN CERTIFICATE-----\nC1\n-----END CERTIFICATE-----\n", result.get(0));
         assertEquals("-----BEGIN CERTIFICATE-----\nC2\n-----END CERTIFICATE-----\n", result.get(1));
+    }
+
+    @Test
+    void getCaChain_notFound() {
+        when(kvOps.get("client/ca-chain")).thenReturn(null);
+
+        List<String> result = vaultSecretProvider.getCaChain();
+
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void getCaChain_failure() {
+        when(kvOps.get("client/ca-chain")).thenThrow(new RuntimeException("read failed"));
+
+        assertThrows(VaultException.class, () -> vaultSecretProvider.getCaChain());
+    }
+
+    @Test
+    void ensureKvMountExists_cachesAfterFirstCheck() {
+        // First call checks the mount
+        vaultSecretProvider.ensureKvMountExists();
+        verify(sysOps, times(1)).getMounts();
+
+        // Second call should be cached
+        vaultSecretProvider.ensureKvMountExists();
+        verify(sysOps, times(1)).getMounts(); // Still 1 call, not 2
+    }
+
+    @Test
+    void getKeyPair_handlesNonStringValues() {
+        Versioned<Map<String, Object>> versioned = mock(Versioned.class);
+        when(versioned.getData()).thenReturn(Map.of("publicKey", 123, "privateKey", 456));
+        when(kvOps.get("client/keypair")).thenReturn(versioned);
+
+        CreateKeyResponseDTO result = vaultSecretProvider.getKeyPair();
+
+        assertNotNull(result);
+        assertNull(result.getPublicKeyPem());
+        assertNull(result.getPrivateKeyPem());
+    }
+
+    @Test
+    void getCertificate_returnsNullForNonStringValue() {
+        Versioned<Map<String, Object>> versioned = mock(Versioned.class);
+        when(versioned.getData()).thenReturn(Map.of("certificate", 123));
+        when(kvOps.get("client/certificate")).thenReturn(versioned);
+
+        String result = vaultSecretProvider.getCertificate();
+        assertNull(result);
+    }
+
+    @Test
+    void getIntermediateCa_returnsNullForNonStringValue() {
+        Versioned<Map<String, Object>> versioned = mock(Versioned.class);
+        when(versioned.getData()).thenReturn(Map.of("certificate", 123));
+        when(kvOps.get("client/intermediate-ca")).thenReturn(versioned);
+
+        String result = vaultSecretProvider.getIntermediateCa();
+        assertNull(result);
+    }
+
+    @Test
+    void getCaChain_emptyChainString() {
+        Versioned<Map<String, Object>> versioned = mock(Versioned.class);
+        when(versioned.getData()).thenReturn(Map.of("chain", "   "));
+        when(kvOps.get("client/ca-chain")).thenReturn(versioned);
+
+        List<String> result = vaultSecretProvider.getCaChain();
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void getCertificate_returnsNullWhenDataIsNull() {
+        Versioned<Map<String, Object>> versioned = mock(Versioned.class);
+        when(versioned.getData()).thenReturn(null);
+        when(kvOps.get("client/certificate")).thenReturn(versioned);
+
+        String result = vaultSecretProvider.getCertificate();
+        assertNull(result);
+    }
+
+    @Test
+    void getKeyPair_returnsNullWhenDataIsNull() {
+        Versioned<Map<String, Object>> versioned = mock(Versioned.class);
+        when(versioned.getData()).thenReturn(null);
+        when(kvOps.get("client/keypair")).thenReturn(versioned);
+
+        CreateKeyResponseDTO result = vaultSecretProvider.getKeyPair();
+        assertNull(result);
+    }
+
+    @Test
+    void getCaChain_returnsEmptyWhenDataIsNull() {
+        Versioned<Map<String, Object>> versioned = mock(Versioned.class);
+        when(versioned.getData()).thenReturn(null);
+        when(kvOps.get("client/ca-chain")).thenReturn(versioned);
+
+        List<String> result = vaultSecretProvider.getCaChain();
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
+    }
+
+    @Test
+    void getIntermediateCa_returnsNullWhenDataIsNull() {
+        Versioned<Map<String, Object>> versioned = mock(Versioned.class);
+        when(versioned.getData()).thenReturn(null);
+        when(kvOps.get("client/intermediate-ca")).thenReturn(versioned);
+
+        String result = vaultSecretProvider.getIntermediateCa();
+        assertNull(result);
+    }
+
+    @Test
+    void getSecret_returnsNullWhenDataIsNull() {
+        Versioned<Map<String, Object>> versioned = mock(Versioned.class);
+        when(versioned.getData()).thenReturn(null);
+        when(kvOps.get("client/test-secret")).thenReturn(versioned);
+
+        Map<String, Object> result = vaultSecretProvider.getSecret("test-secret");
+        assertNull(result);
     }
 }

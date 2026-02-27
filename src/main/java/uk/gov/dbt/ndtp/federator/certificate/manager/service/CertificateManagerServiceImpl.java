@@ -6,19 +6,24 @@
 
 package uk.gov.dbt.ndtp.federator.certificate.manager.service;
 
+import java.util.Arrays;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import uk.gov.dbt.ndtp.federator.certificate.manager.config.CertificateProperties;
-import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.*;
+import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.CertificateResponseDTO;
+import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.CreateCsrRequestDTO;
+import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.CreateCsrResponseDTO;
+import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.CreateKeyResponseDTO;
+import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.SignCertRequestDTO;
+import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.SignCertResponseDTO;
 import uk.gov.dbt.ndtp.federator.certificate.manager.service.pki.PkiService;
 import uk.gov.dbt.ndtp.federator.certificate.manager.service.pki.VaultSecretProvider;
 import uk.gov.dbt.ndtp.federator.certificate.manager.service.pki.cryptography.PemUtil;
 
 /**
  * Service responsible for periodic certificate management tasks.
- * Uses Spring Scheduling to execute tasks at configured intervals.
  */
 @Slf4j
 @Service
@@ -39,33 +44,29 @@ public class CertificateManagerServiceImpl implements CertificateManagerService 
      */
     @Override
     public void run() {
-        try {
-            // Ensure Intermediate CA is healthy before attempting certificate renewal
-            checkAndRefreshIntermediateCa();
+        // Ensure Intermediate CA is healthy before attempting certificate renewal
+        checkAndRefreshIntermediateCa();
 
-            String currentCert = vaultSecretProvider.getCertificate();
-            if (currentCert == null || currentCert.isBlank()) {
-                log.info("No certificate found in Vault. Initiating renewal...");
+        String currentCert = vaultSecretProvider.getCertificate();
+        if (currentCert == null || currentCert.isBlank()) {
+            log.info("No certificate found in Vault. Initiating renewal...");
+            renewCertificate();
+        } else {
+            long daysLeft = PemUtil.daysUntilExpiry(currentCert);
+            String expiryDateStr = getExpiryDateString(currentCert);
+
+            double threshold = certificateProperties.getRenewalThresholdPercentage();
+            if (PemUtil.isValidityBelowThreshold(currentCert, threshold)) {
+                log.info(
+                        "Certificate validity is below {}%. Expiry date: {}, days remaining: {}. Initiating renewal...",
+                        threshold, expiryDateStr, daysLeft);
                 renewCertificate();
             } else {
-                long daysLeft = PemUtil.daysUntilExpiry(currentCert);
-                String expiryDateStr = getExpiryDateString(currentCert);
-
-                double threshold = certificateProperties.getRenewalThresholdPercentage();
-                if (PemUtil.isValidityBelowThreshold(currentCert, threshold)) {
-                    log.info(
-                            "Certificate validity is below {}%. Expiry date: {}, days remaining: {}. Initiating renewal...",
-                            threshold, expiryDateStr, daysLeft);
-                    renewCertificate();
-                } else {
-                    log.info(
-                            "Certificate is still valid above threshold. Expiry date: {}, days remaining: {}. Skipping renewal.",
-                            expiryDateStr,
-                            daysLeft);
-                }
+                log.info(
+                        "Certificate is still valid above threshold. Expiry date: {}, days remaining: {}. Skipping renewal.",
+                        expiryDateStr,
+                        daysLeft);
             }
-        } catch (Exception e) {
-            log.error("Failed to perform certificate renewal task", e);
         }
     }
 
@@ -74,11 +75,7 @@ public class CertificateManagerServiceImpl implements CertificateManagerService 
      */
     @Override
     public void sync() {
-        try {
-            keyStoreSyncService.syncKeyStoresToFilesystem();
-        } catch (Exception e) {
-            log.error("Failed to synchronize keystores to filesystem", e);
-        }
+        keyStoreSyncService.syncKeyStoresToFilesystem();
     }
 
     private static String getExpiryDateString(String currentCert) {
@@ -91,48 +88,40 @@ public class CertificateManagerServiceImpl implements CertificateManagerService 
         return expiryDateStr;
     }
 
-    /**
-     * {@inheritDoc}
-     */
     private void checkAndRefreshIntermediateCa() {
-        try {
-            String current = vaultSecretProvider.getIntermediateCa();
-            boolean missing = (current == null || current.isBlank());
-            long minValidDays = certificateProperties.getIntermediateMinValidDays();
-            boolean expiringSoon = !missing && !PemUtil.isValidForAtLeastDays(current, minValidDays);
+        String current = vaultSecretProvider.getIntermediateCa();
+        boolean missing = (current == null || current.isBlank());
+        long minValidDays = certificateProperties.getIntermediateMinValidDays();
+        boolean expiringSoon = !missing && !PemUtil.isValidForAtLeastDays(current, minValidDays);
 
-            if (missing || expiringSoon) {
-                if (missing) {
-                    log.warn("Intermediate CA not found in Vault. Requesting a new one from Management Node...");
-                } else {
-                    long daysLeft = PemUtil.daysUntilExpiry(current);
-                    log.warn(
-                            "Intermediate CA expires in {} days (< {} threshold). Requesting a new one...",
-                            daysLeft,
-                            minValidDays);
-                }
-                CertificateResponseDTO response = managementNodeService.getIntermediateCertificate();
-                if (response != null
-                        && response.getCertificate() != null
-                        && !response.getCertificate().isBlank()) {
-                    vaultSecretProvider.persistIntermediateCa(response.getCertificate());
-                    log.info("Intermediate CA updated and persisted to Vault.");
-                } else {
-                    log.error("Management Node did not return a valid Intermediate CA certificate.");
-                }
+        if (missing || expiringSoon) {
+            if (missing) {
+                log.warn("Intermediate CA not found in Vault. Requesting a new one from Management Node...");
             } else {
-                log.info("Intermediate CA in Vault is valid for at least {} days. No action required.", minValidDays);
+                long daysLeft = PemUtil.daysUntilExpiry(current);
+                log.warn(
+                        "Intermediate CA expires in {} days (< {} threshold). Requesting a new one...",
+                        daysLeft,
+                        minValidDays);
             }
-        } catch (Exception e) {
-            log.error("Failed to validate or refresh Intermediate CA", e);
+            CertificateResponseDTO response = managementNodeService.getIntermediateCertificate();
+            if (response != null
+                    && response.getCertificate() != null
+                    && !response.getCertificate().isBlank()) {
+                vaultSecretProvider.persistIntermediateCa(response.getCertificate());
+                log.info("Intermediate CA updated and persisted to Vault.");
+            } else {
+                log.error("Management Node did not return a valid Intermediate CA certificate.");
+            }
+        } else {
+            log.info("Intermediate CA in Vault is valid for at least {} days. No action required.", minValidDays);
         }
     }
 
     /**
      * Executes the certificate renewal workflow: generates new keys, requests a CSR, and sends it for signing.
      */
-    @Override
-    public void renewCertificate() {
+    void renewCertificate() {
         log.info(RENEW_LOG_MSG);
 
         CreateKeyResponseDTO keyPair = generateAndPersistKeyPair();
@@ -175,7 +164,7 @@ public class CertificateManagerServiceImpl implements CertificateManagerService 
         List<String> dnsSans = null;
         String cfgAltNamesCsv = subjectCfg.getAltNames();
         if (cfgAltNamesCsv != null && !cfgAltNamesCsv.isBlank()) {
-            dnsSans = java.util.Arrays.stream(cfgAltNamesCsv.split(","))
+            dnsSans = Arrays.stream(cfgAltNamesCsv.split(","))
                     .map(String::trim)
                     .filter(s -> !s.isEmpty())
                     .toList();

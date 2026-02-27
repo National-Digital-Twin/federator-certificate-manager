@@ -8,13 +8,15 @@ package uk.gov.dbt.ndtp.federator.certificate.manager.model.dto;
 
 import lombok.AllArgsConstructor;
 import lombok.Builder;
-import lombok.Data;
+import lombok.Getter;
 import lombok.NoArgsConstructor;
+import lombok.Setter;
 
 /**
  * Data Transfer Object representing the intermediate certificate response from Management Node.
  */
-@Data
+@Getter
+@Setter
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor

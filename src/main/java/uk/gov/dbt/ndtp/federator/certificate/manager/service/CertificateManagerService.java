@@ -21,10 +21,4 @@ public interface CertificateManagerService {
      * Periodically executed task to synchronize on-disk keystores and truststores with Vault.
      */
     void sync();
-
-    /**
-     * Generates a new key pair and persists it to the configured Vault secret path.
-     * This involves calling PkiService to create the keys and VaultSecretProvider to store them.
-     */
-    void renewCertificate();
 }

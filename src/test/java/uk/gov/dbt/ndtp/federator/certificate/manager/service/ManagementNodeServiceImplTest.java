@@ -7,6 +7,7 @@
 package uk.gov.dbt.ndtp.federator.certificate.manager.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -21,6 +22,8 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.web.client.RestClient;
 import uk.gov.dbt.ndtp.federator.certificate.manager.exception.ManagementNodeException;
 import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.CertificateResponseDTO;
+import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.SignCertRequestDTO;
+import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.SignCertResponseDTO;
 import uk.gov.dbt.ndtp.federator.certificate.manager.service.idp.TokenCacheService;
 
 @ExtendWith(MockitoExtension.class)
@@ -72,6 +75,55 @@ class ManagementNodeServiceImplTest {
         when(tokenCacheService.getToken()).thenReturn("token");
         when(restClient.get()).thenThrow(new RuntimeException("API error"));
 
-        assertThrows(ManagementNodeException.class, () -> managementNodeService.getIntermediateCertificate());
+        ManagementNodeException ex =
+                assertThrows(ManagementNodeException.class, () -> managementNodeService.getIntermediateCertificate());
+        assertEquals("Failed to retrieve intermediate certificate", ex.getMessage());
+    }
+
+    @Test
+    void getIntermediateCertificate_throwsWhenTokenFails() {
+        when(tokenCacheService.getToken()).thenThrow(new RuntimeException("token error"));
+
+        assertThrows(RuntimeException.class, () -> managementNodeService.getIntermediateCertificate());
+    }
+
+    @Test
+    void signCertificate_returnsResponseOnSuccess() {
+        String token = "test-token";
+        SignCertRequestDTO request = SignCertRequestDTO.builder().csr("csr-pem").build();
+        SignCertResponseDTO expectedResponse =
+                SignCertResponseDTO.builder().certificate("signed-cert").build();
+
+        when(tokenCacheService.getToken()).thenReturn(token);
+
+        RestClient.RequestBodyUriSpec requestBodyUriSpec = mock(RestClient.RequestBodyUriSpec.class);
+        RestClient.RequestBodySpec requestBodySpec = mock(RestClient.RequestBodySpec.class);
+        RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
+
+        when(restClient.post()).thenReturn(requestBodyUriSpec);
+        when(requestBodyUriSpec.uri(baseUrl + ManagementNodeServiceImpl.SIGN_CSR_PATH))
+                .thenReturn(requestBodySpec);
+        when(requestBodySpec.header(eq(HttpHeaders.AUTHORIZATION), eq(ManagementNodeServiceImpl.BEARER_PREFIX + token)))
+                .thenReturn(requestBodySpec);
+        when(requestBodySpec.body(request)).thenReturn(requestBodySpec);
+        when(requestBodySpec.retrieve()).thenReturn(responseSpec);
+        when(responseSpec.body(SignCertResponseDTO.class)).thenReturn(expectedResponse);
+
+        SignCertResponseDTO actualResponse = managementNodeService.signCertificate(request);
+
+        assertNotNull(actualResponse);
+        assertEquals("signed-cert", actualResponse.getCertificate());
+    }
+
+    @Test
+    void signCertificate_throwsExceptionOnFailure() {
+        when(tokenCacheService.getToken()).thenReturn("token");
+        when(restClient.post()).thenThrow(new RuntimeException("API error"));
+
+        SignCertRequestDTO request = SignCertRequestDTO.builder().csr("csr-pem").build();
+
+        ManagementNodeException ex =
+                assertThrows(ManagementNodeException.class, () -> managementNodeService.signCertificate(request));
+        assertEquals("Failed to sign certificate", ex.getMessage());
     }
 }

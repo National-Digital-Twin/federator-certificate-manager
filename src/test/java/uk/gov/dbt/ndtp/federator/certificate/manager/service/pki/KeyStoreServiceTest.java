@@ -75,13 +75,37 @@ class KeyStoreServiceTest {
     }
 
     @Test
+    void createKeyStore_withNullCaChain() throws Exception {
+        String password = "test-password";
+        String alias = "test-alias";
+        byte[] ksBytes = keyStoreService.createKeyStore(privateKeyPem, leafPem, null, password, alias);
+
+        assertNotNull(ksBytes);
+        KeyStore ks = KeyStore.getInstance("PKCS12");
+        ks.load(new ByteArrayInputStream(ksBytes), password.toCharArray());
+
+        assertTrue(ks.containsAlias(alias));
+        assertEquals(1, ks.getCertificateChain(alias).length);
+    }
+
+    @Test
+    void createKeyStore_withEmptyCaChain() throws Exception {
+        String password = "test-password";
+        String alias = "test-alias";
+        byte[] ksBytes = keyStoreService.createKeyStore(privateKeyPem, leafPem, List.of(), password, alias);
+
+        assertNotNull(ksBytes);
+        KeyStore ks = KeyStore.getInstance("PKCS12");
+        ks.load(new ByteArrayInputStream(ksBytes), password.toCharArray());
+
+        assertTrue(ks.containsAlias(alias));
+        assertEquals(1, ks.getCertificateChain(alias).length);
+    }
+
+    @Test
     void createKeyStore_failure_invalidKeyStoreType() {
         String password = "test-password";
 
-        // We can't easily mock KeyStore.getInstance("PKCS12") without a lot of ceremony
-        // But we can trigger an exception in ks.setKeyEntry if the certificate chain is empty or has nulls
-        // Or if we pass a null alias.
-        
         assertThrows(
                 KeyStoreCreationException.class,
                 () -> keyStoreService.createKeyStore(privateKeyPem, leafPem, List.of(caPem), password, null));
@@ -98,6 +122,42 @@ class KeyStoreServiceTest {
 
         assertTrue(ks.containsAlias("ca-0"));
         assertNotNull(ks.getCertificate("ca-0"));
+    }
+
+    @Test
+    void createTrustStore_withNullCaChain() throws Exception {
+        String password = "trust-password";
+        byte[] tsBytes = keyStoreService.createTrustStore(null, password);
+
+        assertNotNull(tsBytes);
+        KeyStore ks = KeyStore.getInstance("PKCS12");
+        ks.load(new ByteArrayInputStream(tsBytes), password.toCharArray());
+
+        assertEquals(0, ks.size());
+    }
+
+    @Test
+    void createTrustStore_withMultipleCerts() throws Exception {
+        String password = "trust-password";
+
+        // Create a second CA cert
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+        kpg.initialize(2048);
+        KeyPair secondCaKeyPair = kpg.generateKeyPair();
+        X500Name secondCaName = new X500Name("CN=CA2");
+        X509Certificate secondCaCert =
+                createCert(secondCaName, secondCaName, secondCaKeyPair.getPublic(), secondCaKeyPair.getPrivate());
+        String secondCaPem = PemUtil.toPem("CERTIFICATE", secondCaCert.getEncoded());
+
+        byte[] tsBytes = keyStoreService.createTrustStore(List.of(caPem, secondCaPem), password);
+
+        assertNotNull(tsBytes);
+        KeyStore ks = KeyStore.getInstance("PKCS12");
+        ks.load(new ByteArrayInputStream(tsBytes), password.toCharArray());
+
+        assertEquals(2, ks.size());
+        assertTrue(ks.containsAlias("ca-0"));
+        assertTrue(ks.containsAlias("ca-1"));
     }
 
     private X509Certificate createCert(X500Name subject, X500Name issuer, PublicKey pubKey, PrivateKey privKey)
