@@ -1,6 +1,6 @@
 # README
 
-**Repository:** `[repository-name]`  
+**Repository:** `federator-certificate-manager`  
 **Description:** `[Brief summary of this repository’s purpose, key features, and usage]`  
 **Repository Status:** `Private – NDTP InnerSource`  
 
@@ -28,8 +28,8 @@ Follow these steps to get started quickly with this repository. For detailed ins
 
 ### 1. Download and Build  
 ```sh  
-git clone https://github.com/[repository-name].git  
-cd [repository-name]  
+git clone https://github.com/federator-certificate-manager.git  
+cd federator-certificate-manager  
 ```
 
 ### 2. Run Build Version  
