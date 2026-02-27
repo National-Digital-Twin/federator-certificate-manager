@@ -9,7 +9,6 @@ package uk.gov.dbt.ndtp.federator.certificate.manager.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
-import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
@@ -59,8 +58,7 @@ class ManagementNodeServiceImplTest {
         when(restClient.get()).thenReturn(requestHeadersUriSpec);
         when(requestHeadersUriSpec.uri(baseUrl + ManagementNodeServiceImpl.INTERMEDIATE_CERT_PATH))
                 .thenReturn(requestHeadersSpec);
-        when(requestHeadersSpec.header(
-                        eq(HttpHeaders.AUTHORIZATION), eq(ManagementNodeServiceImpl.BEARER_PREFIX + token)))
+        when(requestHeadersSpec.header(HttpHeaders.AUTHORIZATION, ManagementNodeServiceImpl.BEARER_PREFIX + token))
                 .thenReturn(requestHeadersSpec);
         when(requestHeadersSpec.retrieve()).thenReturn(responseSpec);
         when(responseSpec.body(CertificateResponseDTO.class)).thenReturn(expectedResponse);
@@ -103,7 +101,7 @@ class ManagementNodeServiceImplTest {
         when(restClient.post()).thenReturn(requestBodyUriSpec);
         when(requestBodyUriSpec.uri(baseUrl + ManagementNodeServiceImpl.SIGN_CSR_PATH))
                 .thenReturn(requestBodySpec);
-        when(requestBodySpec.header(eq(HttpHeaders.AUTHORIZATION), eq(ManagementNodeServiceImpl.BEARER_PREFIX + token)))
+        when(requestBodySpec.header(HttpHeaders.AUTHORIZATION, ManagementNodeServiceImpl.BEARER_PREFIX + token))
                 .thenReturn(requestBodySpec);
         when(requestBodySpec.body(request)).thenReturn(requestBodySpec);
         when(requestBodySpec.retrieve()).thenReturn(responseSpec);

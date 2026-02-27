@@ -11,6 +11,15 @@ package uk.gov.dbt.ndtp.federator.certificate.manager.exception;
  */
 public class KeyStoreCreationException extends RuntimeException {
     /**
+     * Constructs a new KeyStoreCreationException with the specified detail message.
+     *
+     * @param message the detail message
+     */
+    public KeyStoreCreationException(String message) {
+        super(message);
+    }
+
+    /**
      * Constructs a new KeyStoreCreationException with the specified detail message and cause.
      *
      * @param message the detail message

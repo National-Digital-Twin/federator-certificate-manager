@@ -94,7 +94,7 @@ public interface VaultSecretProvider {
      * Retrieves a generic secret from the configured Vault secret path.
      *
      * @param suffix the suffix to append to the base path
-     * @return the secret data as a map, or null if not found
+     * @return the secret data as a map, or an empty map if not found
      * @throws VaultException if retrieval fails
      */
     Map<String, Object> getSecret(String suffix);

@@ -7,6 +7,7 @@
 package uk.gov.dbt.ndtp.federator.certificate.manager.service;
 
 import java.io.ByteArrayInputStream;
+import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -14,9 +15,13 @@ import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.Key;
 import java.security.KeyStore;
+import java.security.KeyStoreException;
+import java.security.NoSuchAlgorithmException;
 import java.security.PrivateKey;
 import java.security.SecureRandom;
+import java.security.UnrecoverableKeyException;
 import java.security.cert.Certificate;
+import java.security.cert.CertificateException;
 import java.security.cert.X509Certificate;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -28,7 +33,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import uk.gov.dbt.ndtp.federator.certificate.manager.config.CertificateProperties;
-import uk.gov.dbt.ndtp.federator.certificate.manager.exception.PkiException;
+import uk.gov.dbt.ndtp.federator.certificate.manager.exception.FileSystemException;
+import uk.gov.dbt.ndtp.federator.certificate.manager.exception.KeyStoreCreationException;
 import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.CreateKeyResponseDTO;
 import uk.gov.dbt.ndtp.federator.certificate.manager.service.pki.KeyStoreService;
 import uk.gov.dbt.ndtp.federator.certificate.manager.service.pki.VaultSecretProvider;
@@ -153,7 +159,11 @@ public class KeyStoreSyncServiceImpl implements KeyStoreSyncService {
             }
 
             return false;
-        } catch (Exception e) {
+        } catch (KeyStoreException
+                | UnrecoverableKeyException
+                | NoSuchAlgorithmException
+                | CertificateException
+                | IOException e) {
             log.warn("Failed to validate existing keystore {}: {}. Assuming update is needed.", path, e.getMessage());
             return true;
         }
@@ -179,13 +189,14 @@ public class KeyStoreSyncServiceImpl implements KeyStoreSyncService {
             }
 
             return false;
-        } catch (Exception e) {
+        } catch (KeyStoreException | NoSuchAlgorithmException | CertificateException | IOException e) {
             log.warn("Failed to validate existing truststore {}: {}. Assuming update is needed.", path, e.getMessage());
             return true;
         }
     }
 
-    private KeyStore loadKeyStore(Path path, String password) throws Exception {
+    private KeyStore loadKeyStore(Path path, String password)
+            throws KeyStoreException, IOException, NoSuchAlgorithmException, CertificateException {
         KeyStore ks = KeyStore.getInstance(PKCS_12);
         try (InputStream is = Files.newInputStream(path)) {
             ks.load(is, password.toCharArray());
@@ -199,7 +210,7 @@ public class KeyStoreSyncServiceImpl implements KeyStoreSyncService {
         }
 
         Map<String, Object> secret = vaultSecretProvider.getSecret(vaultSuffix);
-        if (secret != null && secret.containsKey(PASSWORD)) {
+        if (secret.containsKey(PASSWORD)) {
             return (String) secret.get(PASSWORD);
         }
 
@@ -232,7 +243,7 @@ public class KeyStoreSyncServiceImpl implements KeyStoreSyncService {
             } else {
                 log.debug("Password file at {} is already in sync. Skipping update.", passwordFile);
             }
-        } catch (Exception e) {
+        } catch (FileSystemException e) {
             log.error("Failed to write password file to {}", passwordFile, e);
             throw e;
         }
@@ -243,12 +254,12 @@ public class KeyStoreSyncServiceImpl implements KeyStoreSyncService {
             KeyStore ks = KeyStore.getInstance(PKCS_12);
             ks.load(new ByteArrayInputStream(bytes), password.toCharArray());
             if (!ks.containsAlias(alias)) {
-                throw new PkiException("Generated keystore missing expected alias: " + alias);
+                throw new KeyStoreCreationException("Generated keystore missing expected alias: " + alias);
             }
-        } catch (PkiException e) {
+        } catch (KeyStoreCreationException e) {
             throw e;
-        } catch (Exception e) {
-            throw new PkiException("Failed to validate generated keystore", e);
+        } catch (KeyStoreException | IOException | NoSuchAlgorithmException | CertificateException e) {
+            throw new KeyStoreCreationException("Failed to validate generated keystore", e);
         }
     }
 
@@ -256,8 +267,8 @@ public class KeyStoreSyncServiceImpl implements KeyStoreSyncService {
         try {
             KeyStore ks = KeyStore.getInstance(PKCS_12);
             ks.load(new ByteArrayInputStream(bytes), password.toCharArray());
-        } catch (Exception e) {
-            throw new PkiException("Failed to validate generated truststore", e);
+        } catch (KeyStoreException | IOException | NoSuchAlgorithmException | CertificateException e) {
+            throw new KeyStoreCreationException("Failed to validate generated truststore", e);
         }
     }
 }

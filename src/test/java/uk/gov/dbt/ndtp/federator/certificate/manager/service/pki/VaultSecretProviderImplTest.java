@@ -175,7 +175,9 @@ class VaultSecretProviderImplTest {
     void persistCaChain_failure() {
         doThrow(new RuntimeException("Vault down")).when(kvOps).put(eq("client/ca-chain"), anyMap());
 
-        assertThrows(VaultException.class, () -> vaultSecretProvider.persistCaChain(List.of("cert")));
+        List<String> caChain = List.of("cert");
+
+        assertThrows(VaultException.class, () -> vaultSecretProvider.persistCaChain(caChain));
     }
 
     @Test
@@ -271,7 +273,8 @@ class VaultSecretProviderImplTest {
     void getSecret_notFound() {
         when(kvOps.get("client/test-secret")).thenReturn(null);
         Map<String, Object> result = vaultSecretProvider.getSecret("test-secret");
-        assertNull(result);
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
     }
 
     @Test
@@ -316,8 +319,14 @@ class VaultSecretProviderImplTest {
     @Test
     void getCaChain_success() {
         Versioned<Map<String, Object>> versioned = mock(Versioned.class);
-        String chain = "-----BEGIN CERTIFICATE-----\nC1\n-----END CERTIFICATE-----\n"
-                + "-----BEGIN CERTIFICATE-----\nC2\n-----END CERTIFICATE-----";
+        String chain =
+                """
+                -----BEGIN CERTIFICATE-----
+                C1
+                -----END CERTIFICATE-----
+                -----BEGIN CERTIFICATE-----
+                C2
+                -----END CERTIFICATE-----""";
         when(versioned.getData()).thenReturn(Map.of("chain", chain));
         when(kvOps.get("client/ca-chain")).thenReturn(versioned);
 
@@ -441,12 +450,13 @@ class VaultSecretProviderImplTest {
     }
 
     @Test
-    void getSecret_returnsNullWhenDataIsNull() {
+    void getSecret_returnsEmptyMapWhenDataIsNull() {
         Versioned<Map<String, Object>> versioned = mock(Versioned.class);
         when(versioned.getData()).thenReturn(null);
         when(kvOps.get("client/test-secret")).thenReturn(versioned);
 
         Map<String, Object> result = vaultSecretProvider.getSecret("test-secret");
-        assertNull(result);
+        assertNotNull(result);
+        assertTrue(result.isEmpty());
     }
 }

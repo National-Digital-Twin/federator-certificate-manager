@@ -262,7 +262,7 @@ public class VaultSecretProviderImpl implements VaultSecretProvider {
             Versioned<Map<String, Object>> versioned = kv.get(relativePath);
             if (versioned == null || versioned.getData() == null) {
                 log.warn("No secret found at {}/{}", mountPath, relativePath);
-                return null;
+                return Collections.emptyMap();
             }
             return versioned.getData();
         } catch (Exception e) {

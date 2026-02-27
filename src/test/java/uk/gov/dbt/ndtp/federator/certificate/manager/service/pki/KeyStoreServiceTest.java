@@ -105,10 +105,11 @@ class KeyStoreServiceTest {
     @Test
     void createKeyStore_failure_invalidKeyStoreType() {
         String password = "test-password";
+        List<String> caChain = List.of(caPem);
 
         assertThrows(
                 KeyStoreCreationException.class,
-                () -> keyStoreService.createKeyStore(privateKeyPem, leafPem, List.of(caPem), password, null));
+                () -> keyStoreService.createKeyStore(privateKeyPem, leafPem, caChain, password, null));
     }
 
     @Test
