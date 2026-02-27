@@ -1,6 +1,6 @@
 # Maintainers  
 
-**Repository:** `[repository-name]`  
+**Repository:** `federator-certificate-manager`  
 **Description:** `Lists maintainers responsible for reviewing issues, security, and documentation updates.`  
 
 ## Introduction  
@@ -23,53 +23,9 @@ Maintainers are responsible for:
 - Overseeing **code updates** developed by NDTP-approved suppliers.  
 - Ensuring compliance with **NDTP’s licensing and security policies**.  
 
-NDTP does not accept public code contributions, but we welcome **bug reports and documentation feedback**.  
-
----
-
-## Current Maintainers  
-
-| Name              | Organisation           | Role               | Contact                |
-|-------------------|------------------------|--------------------|------------------------|
-| [Maintainer Name] | [NDTP / Supplier Name] | Lead Maintainer    | [email@example.com]    |
-| [Maintainer Name] | [NDTP / Supplier Name] | Security Contact   | [security@example.com] |
-| [Maintainer Name] | [NDTP / Supplier Name] | Documentation Lead | [docs@example.com]     |
-
-For general issues, please **open a GitHub issue** rather than contacting maintainers directly.  
-
----
-
-## Escalation Contacts  
-
-If you need to escalate an issue that has not been addressed within a reasonable time:  
-
-1. **Security vulnerabilities** – Follow the responsible disclosure process in [SECURITY.md](./SECURITY.md).  
-2. **Governance and policy queries** – Contact NDTP at **ndtp@businessandtrade.gov.uk**.  
-3. **Urgent operational issues** – If an issue affects critical systems, contact the **Lead Maintainer** listed above.  
-
----
-
-## Updating this File  
-
-Maintainer details may change over time. If you are an NDTP-approved maintainer and need to update this file, please submit a request through the designated NDTP repository administrator.  
-
----
-
-**Maintained by the National Digital Twin Programme (NDTP).**  
-
-© Crown Copyright 2025. This work has been developed by the National Digital Twin Programme and is legally attributed to the Department for Business and Trade (UK) as the governing entity.  
-
-Licensed under the NDTP InnerSource Licence – Version 1.0.
-
-For full licensing terms, see [LICENSE.md](LICENSE.md).
-
-<!--
-
-GUIDANCE: USE THIS IN PLACE OF THE ABOVE IF THE REPOSITORY IS IN TRANSITION. PLEASE REMOVE THIS SECTION WHEN NOT REQUIRED.
-
 # Maintainers  
 
-**Repository:** `[repository-name]`  
+**Repository:** `federator-certificate-manager`  
 **Description:** `Lists maintainers responsible for reviewing issues, security, and documentation updates.`  
 
 Current Status: Under NDTP Oversight
@@ -79,7 +35,7 @@ At present, **there is no actively assigned supplier maintaining this repository
 In the meantime:  
 - **Bug reports and documentation feedback** will still be reviewed by NDTP.  
 - **Security vulnerabilities** should be reported via the [responsible disclosure process](./SECURITY.md).  
-- **For any queries, please contact:** **ndtp-contact@example.com** 
+- **For any queries, please contact:** **NDTP-OSS@informed.com** 
 
 Once a new supplier is engaged, this file will be updated with their details. 
 
@@ -87,10 +43,14 @@ Once a new supplier is engaged, this file will be updated with their details.
 
 The following organisations were responsible for previous development efforts on this repository:  
 
-| Name                       | Organisation    | Role               | Contact                        |
-|----------------------------|-----------------|--------------------|--------------------------------|
-| [Previous Maintainer Name] | [Supplier Name] | Lead Maintainer    | [ndtp@businessandtrade.gov.uk] |
-| [Previous Maintainer Name] | [Supplier Name] | Documentation Lead | [ndtp@businessandtrade.gov.uk] |
+
+| Name           | Organisation       | Role               | Contact               |
+|----------------|--------------------|--------------------|-----------------------|
+| Nikan Negaresh | Informed Solutions | Lead Maintainer    | NDTP-OSS@informed.com |
+| Nikan Negaresh | Informed Solutions | Security Contact   | NDTP-OSS@informed.com |
+| Nikan Negaresh | Informed Solutions | Documentation Lead | NDTP-OSS@informed.com |
+
+
 
 *For ongoing inquiries, please use the NDTP contact email above.* 
 
@@ -113,4 +73,4 @@ During these times, NDTP ensures:
 Licensed under the NDTP InnerSource Licence – Version 1.0.
 
 For full licensing terms, see [LICENSE.md](LICENSE.md).
- -->
+

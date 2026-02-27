@@ -1,7 +1,7 @@
 # Federator Certificate Manager
 
 **Repository:** `federator-certificate-manager`
-**VersionVersion:** 1.0.0
+**Description:** 'The Federator Certificate Manager is a non-interactive Spring Boot service that automates X.509 certificate lifecycle management for federator components within the **National Digital Twin Programme (NDTP)**. It operates as a headless daemon — no HTTP endpoints are exposed — running two scheduled jobs that handle certificate renewal and filesystem synchronisation.'
 **Repository Status:** `Private – NDTP InnerSource`
 
 ---

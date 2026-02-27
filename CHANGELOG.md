@@ -1,6 +1,6 @@
 # Changelog 
 
-**Repository:** `[repository-name]`  
+**Repository:** `federator-certificate-manager`  
 **Description:** `Tracks all notable changes, version history, and roadmap toward 1.0.0 following Semantic Versioning.`  
 
 All notable changes to this repository will be documented in this file.

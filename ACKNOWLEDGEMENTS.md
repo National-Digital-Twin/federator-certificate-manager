@@ -1,6 +1,6 @@
 # Acknowledgements
 
-**Repository:** `[repository-name]`  
+**Repository:** `federator-certificate-manager`  
 **Description:** `Recognises suppliers, partner organisations, and other contributors to the repository's development.`  
 
 The National Digital Twin Programme (NDTP) would like to acknowledge the contributions of various organisations and individuals who have supported the development of this repository.
@@ -9,24 +9,15 @@ The National Digital Twin Programme (NDTP) would like to acknowledge the contrib
 
 Over time, the following organisations have provided technical expertise, development support, and domain knowledge that have contributed to the evolution of this project:
 
-i.e. 
-- [Supplier A]
-- [Supplier B]
-- [Supplier C]
-- [Supplier D]
-(etc.)
+- [Informed Solutions](https://informed.com)
 
-<!--
 
-GUIDANCE: IN PLACE OF THE ABOVE LIST, PROVIDE THE ACTUAL SUPPLIER/ORGANISATION DETAILS THAT ARE RELEVANT TO THE REPOSITORY
- 
- -->
 
 We are grateful for the collaboration that has helped shape this repository.
 
 ## Individual contributions
 
-For a list of individual contributors who have made direct commits to this repository, see GitHub’s auto-generated contributor insights: [Contributors](../../../graphs/contributors).
+For a list of individual contributors who have made direct commits to this repository, see GitHub’s auto-generated contributor insights: [Contributors](https://github.com/National-Digital-Twin/federator-certificate-manager/graphs/contributors).
 
 ---
 
