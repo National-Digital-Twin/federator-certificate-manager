@@ -2,51 +2,63 @@ spring:
   main:
     web-application-type: none
   application:
-    name: certificate-manager
+    name: ${SPRING_APPLICATION_NAME:certificate-manager}
   cloud:
     vault:
-      uri: http://localhost:8200
-      token: hvs.germtgBJutoYRbWNj1BKjA6l
+      uri: ${VAULT_URI:http://localhost:8200}
+      token: ${VAULT_TOKEN:}
       authentication: token
+
 application:
   vault:
-    pki-mount: pki-client
-    secret-path: node-net/client
+    pki-mount: ${VAULT_PKI_MOUNT:pki-client}
+    secret-path: ${VAULT_SECRET_PATH:node-net/client}
   client:
-    key-store: /home/developer/Downloads/managementNode/docker/keystore.jks # path to MTLS client keystore
-    trust-store: /home/developer/Downloads/managementNode/docker/truststore.jks
-    key-store-password: changeit # MTLS client keystore password
-    trust-store-password: changeit
-    key-store-type: JKS
+    key-store: ${MTLS_KEYSTORE_PATH:/home/developer/Downloads/managementNode/docker/keystore.jks}
+    trust-store: ${MTLS_TRUSTSTORE_PATH:/home/developer/Downloads/managementNode/docker/truststore.jks}
+    key-store-password: ${MTLS_KEYSTORE_PASSWORD:changeit}
+    trust-store-password: ${MTLS_TRUSTSTORE_PASSWORD:changeit}
+    key-store-type: ${MTLS_KEYSTORE_TYPE:JKS}
   oauth2:
-    token-uri: https://localhost:8443/realms/mng-node/protocol/openid-connect/token
-    client-id: MANAGEMENT_NODE_CLIENT
+    token-uri: ${OAUTH2_TOKEN_URI:https://localhost:8443/realms/mng-node/protocol/openid-connect/token}
+    client-id: ${OAUTH2_CLIENT_ID:MANAGEMENT_NODE_CLIENT}
   management-node:
-    base-url: https://localhost:8090
+    base-url: ${MANAGEMENT_NODE_BASE_URL:https://localhost:8090}
   scheduling:
     certificate-manager:
-      fixed-rate: 60000 # 1 minute in milliseconds
+      renewal-rate: ${CERT_RENEWAL_RATE:3600000} # 1 hour in milliseconds
+      sync-rate: ${CERT_SYNC_RATE:60000} # 1 minute in milliseconds
   certificate:
-    renewal-threshold-percentage: 10
-    key-size: 2048 # 2048 (standard), 4096 (higher security, slower TLS handshake)
+    renewal-threshold-percentage: ${CERT_RENEWAL_THRESHOLD:10}
+    key-size: ${CERT_KEY_SIZE:2048} # 2048 (standard), 4096 (higher security, slower TLS handshake)
     subject:
-      # Example values (uncomment and adjust as needed):
-      country: UK
-      state: South Yorkshire
-      locality: Sheffield
-      organization: Acme Digital Solutions Ltd
-      organizational-unit: Platform Engineering
-      common-name: api.acme-digital.co.uk
+      country: ${CERT_SUBJECT_COUNTRY:UK}
+      state: ${CERT_SUBJECT_STATE:South Yorkshire}
+      locality: ${CERT_SUBJECT_LOCALITY:Sheffield}
+      organization: ${CERT_SUBJECT_ORG:Acme Digital Solutions Ltd}
+      organizational-unit: ${CERT_SUBJECT_OU:Platform Engineering}
+      common-name: ${CERT_SUBJECT_CN:api.acme-digital.co.uk}
       # Alternative Names (DNS), comma-separated
-      alt-names: api.acme-digital.co.uk,api.internal.acme-digital.co.uk
+      alt-names: ${CERT_SUBJECT_ALT_NAMES:api.acme-digital.co.uk,api.internal.acme-digital.co.uk}
     intermediate:
-      min-valid-days: 14
+      min-valid-days: ${CERT_INTERMEDIATE_MIN_VALID_DAYS:14}
+    destination:
+      # Base directory path where all certificate files will be written
+      path: ${CERT_DEST_PATH:/home/developer/test-secrets/}
+      # Filenames for PKCS12 keystore and truststore
+      keystore-file: ${CERT_DEST_KEYSTORE_FILE:keystore.p12}
+      truststore-file: ${CERT_DEST_TRUSTSTORE_FILE:truststore.p12}
+      # File names for generated passwords (will be stored in the same directory as the keystore/truststore)
+      keystore-password-file: ${CERT_DEST_KEYSTORE_PASSWORD_FILE:keystore.password}
+      truststore-password-file: ${CERT_DEST_TRUSTSTORE_PASSWORD_FILE:truststore.password}
+      # Alias for the identity key in the keystore
+      keystore-alias: ${CERT_DEST_KEYSTORE_ALIAS:federator}
 
 # Logging Configuration
 logging:
   level:
-    org.springframework.security: DEBUG
-    uk.gov.dbt.ndtp.ia.node.management: DEBUG
+    org.springframework.security: ${LOG_LEVEL_SPRING_SECURITY:DEBUG}
+    uk.gov.dbt.ndtp.federator.certificate.manager: ${LOG_LEVEL_APP:DEBUG}
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [%X{clientId}] - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [%X{clientId}] - %msg%n"
