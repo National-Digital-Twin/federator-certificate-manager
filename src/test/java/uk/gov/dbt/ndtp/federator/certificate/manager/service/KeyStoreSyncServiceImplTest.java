@@ -415,9 +415,7 @@ class KeyStoreSyncServiceImplTest {
         doNothing().when(mockFs).atomicWrite(any(), any());
         doThrow(new FileSystemException("disk full")).when(mockFs).write(any(), any());
 
-        FileSystemException ex = assertThrows(FileSystemException.class, () -> {
-            serviceWithMockFs.syncKeyStoresToFilesystem();
-        });
+        FileSystemException ex = assertThrows(FileSystemException.class, serviceWithMockFs::syncKeyStoresToFilesystem);
 
         assertEquals("disk full", ex.getMessage());
     }
