@@ -32,6 +32,9 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.io.TempDir;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.NullAndEmptySource;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import uk.gov.dbt.ndtp.federator.certificate.manager.config.CertificateProperties;
@@ -429,8 +432,6 @@ class KeyStoreSyncServiceImplTest {
         KeyPair differentKeyPair = kpg.generateKeyPair();
         String differentPrivateKeyPem =
                 PemUtil.toPem("PRIVATE KEY", differentKeyPair.getPrivate().getEncoded());
-        String differentPublicKeyPem =
-                PemUtil.toPem("PUBLIC KEY", differentKeyPair.getPublic().getEncoded());
 
         byte[] existingKs = realKeyStoreService.createKeyStore(
                 differentPrivateKeyPem, certPem, List.of(caPem), "ks-pass", "federator");
@@ -542,11 +543,13 @@ class KeyStoreSyncServiceImplTest {
         verify(vaultSecretProvider, never()).getSecret(any());
     }
 
-    @Test
-    void resolvePassword_fetchesFromVault() {
+    @ParameterizedTest
+    @NullAndEmptySource
+    @ValueSource(strings = {"  "})
+    void resolvePassword_fetchesFromVault(String configuredPassword) {
         when(vaultSecretProvider.getSecret("suffix")).thenReturn(Map.of("password", "vault-pass"));
 
-        String result = keyStoreSyncService.resolvePassword(null, "suffix");
+        String result = keyStoreSyncService.resolvePassword(configuredPassword, "suffix");
         assertEquals("vault-pass", result);
     }
 
@@ -568,22 +571,6 @@ class KeyStoreSyncServiceImplTest {
         assertNotNull(result);
         assertFalse(result.isBlank());
         verify(vaultSecretProvider).persistSecret(eq("suffix"), any());
-    }
-
-    @Test
-    void resolvePassword_blankConfiguredFetchesFromVault() {
-        when(vaultSecretProvider.getSecret("suffix")).thenReturn(Map.of("password", "vault-pass"));
-
-        String result = keyStoreSyncService.resolvePassword("  ", "suffix");
-        assertEquals("vault-pass", result);
-    }
-
-    @Test
-    void resolvePassword_emptyStringFetchesFromVault() {
-        when(vaultSecretProvider.getSecret("suffix")).thenReturn(Map.of("password", "vault-pass"));
-
-        String result = keyStoreSyncService.resolvePassword("", "suffix");
-        assertEquals("vault-pass", result);
     }
 
     // --- writePasswordToFile with null parent path ---

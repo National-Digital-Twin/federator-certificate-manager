@@ -146,7 +146,7 @@ class VaultSecretProviderImplTest {
         when(sysOps.getMounts()).thenReturn(Collections.emptyMap());
 
         VaultSecretProviderImpl provider = new VaultSecretProviderImpl(vaultTemplate, BASE_PATH);
-        assertThrows(VaultException.class, () -> provider.ensureKvMountExists());
+        assertThrows(VaultException.class, provider::ensureKvMountExists);
     }
 
     @Test
