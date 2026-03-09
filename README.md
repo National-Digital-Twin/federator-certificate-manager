@@ -1,94 +1,423 @@
-# README
+# Federator Certificate Manager
 
-**Repository:** `federator-certificate-manager`  
-**Description:** `[Brief summary of this repository’s purpose, key features, and usage]`  
-**Repository Status:** `Private – NDTP InnerSource`  
+**Repository:** `federator-certificate-manager`
+
+**Description:** `The Federator Certificate Manager is a non-interactive Spring Boot service that automates X.509 certificate lifecycle management for federator components within the Node-Net.`
+
+**Repository Status:** `Private – NDTP InnerSource`
 
 ---
 
 ## Overview
 
-This repository is part of the **National Digital Twin Programme (NDTP)**. It supports the development of secure, modular, and standards-based components for internal use across NDTP projects.
+The Federator Certificate Manager is a non-interactive Spring Boot service that automates X.509 certificate lifecycle management for federator components within the **National Digital Twin Programme (NDTP)**. It operates as a headless daemon — no HTTP endpoints are exposed — running two scheduled jobs that handle certificate renewal and filesystem synchronisation.
 
-> **This repository is private and governed by the NDTP InnerSource Licence – Version 1.0.**  
-> It is intended solely for collaboration among NDTP teams and authorised suppliers.  
+The service integrates with **HashiCorp Vault** (KV v2) for secret persistence, an external **Management Node** API for PKI operations (intermediate CA retrieval and CSR signing), and an **OAuth2 Identity Provider** for token-based authentication. All external HTTP communication is secured via mutual TLS (mTLS).
+
+> **This repository is private and governed by the NDTP InnerSource Licence – Version 1.0.**
+> It is intended solely for collaboration among NDTP teams and authorised suppliers.
 > It is **not open source** and must not be disclosed, redistributed, or published externally.
 
---- 
+---
 
-## Prerequisites  
-Before using this repository, ensure you have the following dependencies installed:  
-- **Required Tooling:** [List required CLI tools, SDKs, or dependencies]  
-- **Pipeline Requirements:** [Describe CI/CD pipeline compatibility]  
-- **Supported Kubernetes Versions:** [List supported Kubernetes versions, if applicable]  
-- **System Requirements:** [Minimum hardware/software requirements]  
+## Features
 
-## Quick Start  
-Follow these steps to get started quickly with this repository. For detailed installation, configuration, and deployment, refer to the relevant MD files.  
+- **Automated Certificate Renewal** — Monitors certificate validity against a configurable threshold and triggers renewal when approaching expiry
+- **Intermediate CA Management** — Automatically fetches and refreshes the intermediate CA from the Management Node before it expires
+- **PKCS#12 KeyStore/TrustStore Generation** — Produces `keystore.p12` and `truststore.p12` from PEM artifacts stored in Vault
+- **Atomic Filesystem Writes** — Uses temp-file-then-rename to prevent partial writes on crash
+- **HashiCorp Vault Integration** — Persists all cryptographic material (key pairs, certificates, CA chains, passwords) to Vault KV v2
+- **mTLS-Secured Communication** — All outbound HTTP calls use mutual TLS with configurable JKS keystores
+- **OAuth2 Client Credentials Flow** — Authenticates against an IdP with Caffeine-cached tokens and automatic refresh
+- **SBOM Generation** — CycloneDX Maven plugin produces a Software Bill of Materials at build time
 
-### 1. Download and Build  
-```sh  
-git clone https://github.com/federator-certificate-manager.git  
-cd federator-certificate-manager  
+---
+
+## Architecture
+
+For detailed architecture documentation including C4 diagrams, sequence diagrams, and component descriptions, see:
+
+| Document | Description |
+|----------|-------------|
+| [Architecture Overview](docs/architecture.md) | C4 context, container, and component diagrams |
+| [Certificate Lifecycle](docs/certificate-lifecycle.md) | Renewal and sync workflows with sequence diagrams |
+| [Configuration Reference](docs/configuration.md) | All `application.yml` properties with descriptions |
+| [Vault Integration](docs/vault-integration.md) | Vault KV v2 secret paths and operations |
+| [Security & mTLS](docs/security.md) | OAuth2 flow, mTLS setup, and token caching |
+
+---
+
+## Prerequisites
+
+| Dependency | Version | Purpose |
+|------------|---------|---------|
+| **JDK** | 21+ | Runtime and compilation |
+| **Apache Maven** | 3.9+ | Build tool |
+| **HashiCorp Vault** | 1.15+ | Secret storage (KV v2 engine) |
+| **Management Node** | — | External PKI API (intermediate CA, CSR signing) |
+| **OAuth2 IdP** | — | Identity Provider (e.g., Keycloak) for client credentials |
+| **JKS Keystores** | — | Client keystore and truststore for mTLS |
+
+### System Requirements
+
+- **OS:** Linux, macOS, or Windows with Java 21+
+- **Memory:** 256 MB minimum heap (512 MB recommended)
+- **Disk:** Writable path for PKCS#12 output files
+- **Network:** Outbound HTTPS to Vault, Management Node, and IdP
+
+---
+
+## Quick Start
+
+### 1. Clone and Build
+
+```sh
+git clone git@github.com:National-Digital-Twin/federator-certificate-manager.git
+cd federator-certificate-manager
+mvn clean package -DskipTests
 ```
 
-### 2. Run Build Version  
-```sh  
-[build-command] --version  
+### 2. Verify Build
+
+```sh
+java -jar target/federator-certificate-manager-1.0.1.jar --version
 ```
 
-### 3. Full Installation  
-<!-- Acknowledging these steps will vary between repositories, this file must be created as part of repository setup. -->
-Refer to [INSTALLATION.md](INSTALLATION.md) for detailed installation steps, including required dependencies and setup configurations.  
+### 3. Run Tests
 
-### 4. Uninstallation  
-<!-- Acknowledging these steps will vary between repositories, this file must be created as part of repository setup. -->
-For steps to remove this repository and its dependencies, see [UNINSTALL.md](UNINSTALL.md).  
+```sh
+# All tests
+mvn test
 
-## Features  
-Include a brief list of key features provided by this repository. These should highlight what makes the project valuable to users and contributors. Examples of features might include:  
-- **Core functionality** (e.g., "Supports secure and federated data-sharing")  
-- **Key integrations** (e.g., "Provides REST and GraphQL API interfaces")  
-- **Scalability & performance** (e.g., "Optimized for high-throughput environments")  
-- **Modularity** (e.g., "Designed with a plugin-based architecture for extensibility")  
+# Specific test class
+mvn test -Dtest=CertificateManagerServiceImplTest
 
-## API Documentation  
-[If this repository exposes an API, link to API documentation or describe the endpoints.]  
+# With coverage report
+mvn verify
+```
 
-## Public Funding Acknowledgment  
-This repository has been developed with public funding as part of the National Digital Twin Programme (NDTP), a UK Government initiative. NDTP, alongside its partners, has invested in this work to advance open, secure, and reusable digital twin technologies for any organisation, whether from the public or private sector, irrespective of size.  
+### 4. Code Formatting
+
+```sh
+# Check formatting (Palantir Java Format via Spotless)
+mvn spotless:check
+
+# Auto-fix formatting
+mvn spotless:apply
+```
+
+---
+
+## Installation
+
+### Step 1: Provision HashiCorp Vault
+
+Enable a KV v2 secrets engine at the mount path matching your configuration:
+
+```sh
+vault secrets enable -path=pki-client kv-v2
+```
+
+Ensure the application's Vault token has read/write access to the configured secret path:
+
+```hcl
+path "pki-client/data/node-net/client/*" {
+  capabilities = ["create", "read", "update", "delete", "list"]
+}
+
+path "pki-client/metadata/node-net/client/*" {
+  capabilities = ["read", "list"]
+}
+
+path "sys/mounts" {
+  capabilities = ["read"]
+}
+```
+
+### Step 2: Prepare mTLS Keystores
+
+The service requires a JKS keystore (containing the client private key and certificate) and a JKS truststore (containing trusted CA certificates) for mTLS communication with the Management Node and IdP.
+
+```sh
+# Example: Create a client keystore
+keytool -genkeypair -alias client -keyalg RSA -keysize 2048 \
+  -keystore keystore.jks -storepass changeit \
+  -dname "CN=certificate-manager,O=NDTP,C=GB"
+
+# Example: Import CA certificate into truststore
+keytool -importcert -alias ca -file ca-cert.pem \
+  -keystore truststore.jks -storepass changeit -noprompt
+```
+
+### Step 3: Configure the Application
+
+Every property in `application.yml` is backed by an environment variable with a sensible default. You can override any value by setting the corresponding environment variable — no YAML editing required.
+
+See the [Configuration Reference](docs/configuration.md) for full details.
+
+#### Vault & Infrastructure
+
+| Environment Variable | Property Path | Default | Description |
+|---|---|---|---|
+| `VAULT_URI` | `spring.cloud.vault.uri` | `http://localhost:8200` | Vault server URI |
+| `VAULT_TOKEN` | `spring.cloud.vault.token` | _(empty)_ | Vault authentication token |
+| `VAULT_PKI_MOUNT` | `application.vault.pki-mount` | `pki-client` | KV v2 mount path in Vault |
+| `VAULT_SECRET_PATH` | `application.vault.secret-path` | `node-net/client` | Base relative path for secrets under the mount |
+
+#### mTLS Client
+
+| Environment Variable | Property Path | Default | Description |
+|---|---|---|---|
+| `MTLS_KEYSTORE_PATH` | `application.client.key-store` | `...docker/keystore.jks` | Path to JKS keystore (client private key + cert) |
+| `MTLS_KEYSTORE_PASSWORD` | `application.client.key-store-password` | `changeit` | Keystore password |
+| `MTLS_TRUSTSTORE_PATH` | `application.client.trust-store` | `...docker/truststore.jks` | Path to JKS truststore (trusted CAs) |
+| `MTLS_TRUSTSTORE_PASSWORD` | `application.client.trust-store-password` | `changeit` | Truststore password |
+| `MTLS_KEYSTORE_TYPE` | `application.client.key-store-type` | `JKS` | Keystore format (`JKS` or `PKCS12`) |
+
+#### OAuth2 & Management Node
+
+| Environment Variable | Property Path | Default | Description |
+|---|---|---|---|
+| `OAUTH2_TOKEN_URI` | `application.oauth2.token-uri` | `https://localhost:8443/realms/mng-node/protocol/openid-connect/token` | OAuth2 token endpoint |
+| `OAUTH2_CLIENT_ID` | `application.oauth2.client-id` | `MANAGEMENT_NODE_CLIENT` | OAuth2 client ID for client credentials grant |
+| `MANAGEMENT_NODE_BASE_URL` | `application.management-node.base-url` | `https://localhost:8090` | Management Node API base URL |
+
+#### Scheduling
+
+| Environment Variable | Property Path | Default | Description |
+|---|---|---|---|
+| `CERT_RENEWAL_RATE` | `application.scheduling.certificate-manager.renewal-rate` | `3600000` | Renewal job interval in ms (default: 1 hour) |
+| `CERT_SYNC_RATE` | `application.scheduling.certificate-manager.sync-rate` | `60000` | Sync job interval in ms (default: 1 minute) |
+
+#### Certificate Properties
+
+| Environment Variable | Property Path | Default | Description |
+|---|---|---|---|
+| `CERT_RENEWAL_THRESHOLD` | `application.certificate.renewal-threshold-percentage` | `10` | Percentage of validity remaining that triggers renewal |
+| `CERT_KEY_SIZE` | `application.certificate.key-size` | `2048` | RSA key size in bits (`2048` or `4096`) |
+| `CERT_INTERMEDIATE_MIN_VALID_DAYS` | `application.certificate.intermediate.min-valid-days` | `14` | Minimum days of CA validity before refresh |
+
+#### Certificate Subject
+
+| Environment Variable | Property Path | Default | Description |
+|---|---|---|---|
+| `CERT_SUBJECT_COUNTRY` | `application.certificate.subject.country` | `UK` | X.500 Country (C) |
+| `CERT_SUBJECT_STATE` | `application.certificate.subject.state` | `South Yorkshire` | X.500 State (ST) |
+| `CERT_SUBJECT_LOCALITY` | `application.certificate.subject.locality` | `Sheffield` | X.500 Locality (L) |
+| `CERT_SUBJECT_ORG` | `application.certificate.subject.organization` | `Acme Digital Solutions Ltd` | X.500 Organization (O) |
+| `CERT_SUBJECT_OU` | `application.certificate.subject.organizational-unit` | `Platform Engineering` | X.500 Organizational Unit (OU) |
+| `CERT_SUBJECT_CN` | `application.certificate.subject.common-name` | `api.acme-digital.co.uk` | X.500 Common Name (CN) |
+| `CERT_SUBJECT_ALT_NAMES` | `application.certificate.subject.alt-names` | `api.acme-digital.co.uk,api.internal.acme-digital.co.uk` | Comma-separated DNS SANs |
+
+#### Output Destination
+
+| Environment Variable | Property Path | Default | Description |
+|---|---|---|---|
+| `CERT_DEST_PATH` | `application.certificate.destination.path` | `/home/developer/test-secrets/` | Base directory for generated files |
+| `CERT_DEST_KEYSTORE_FILE` | `application.certificate.destination.keystore-file` | `keystore.p12` | PKCS#12 keystore filename |
+| `CERT_DEST_TRUSTSTORE_FILE` | `application.certificate.destination.truststore-file` | `truststore.p12` | PKCS#12 truststore filename |
+| `CERT_DEST_KEYSTORE_PASSWORD_FILE` | `application.certificate.destination.keystore-password-file` | `keystore.password` | Keystore password filename |
+| `CERT_DEST_TRUSTSTORE_PASSWORD_FILE` | `application.certificate.destination.truststore-password-file` | `truststore.password` | Truststore password filename |
+| `CERT_DEST_KEYSTORE_ALIAS` | `application.certificate.destination.keystore-alias` | `federator` | Private key alias in the keystore |
+
+#### Logging
+
+| Environment Variable | Property Path | Default | Description |
+|---|---|---|---|
+| `LOG_LEVEL_SPRING_SECURITY` | `logging.level.org.springframework.security` | `DEBUG` | Spring Security log level |
+| `LOG_LEVEL_APP` | `logging.level.uk.gov.dbt.ndtp.federator.certificate.manager` | `DEBUG` | Application log level |
+
+### Step 4: Choose a Configuration Strategy
+
+There are two approaches to configuring the application for different environments: **Spring Profiles** and **environment variables**. These can be combined.
+
+#### Option A: Spring Profiles
+
+Create an environment-specific configuration file named `application-{profile}.yml` alongside the default `application.yml` (or in an external config directory). Properties defined in the profile file override the defaults.
+
+For example, to create a `prod` profile, place an `application-prod.yml` in `src/main/resources/` or in an external config location:
+
+```sh
+# Activate the profile at runtime
+java -jar target/federator-certificate-manager-1.0.1.jar --spring.profiles.active=prod
+
+# Or via environment variable
+SPRING_PROFILES_ACTIVE=prod java -jar target/federator-certificate-manager-1.0.1.jar
+```
+
+Spring Boot resolves configuration in this order (last wins):
+1. `application.yml` — base defaults
+2. `application-{profile}.yml` — profile-specific overrides
+3. Environment variables — highest precedence
+
+This means a `prod` profile file only needs to contain the properties that differ from the defaults. Everything else is inherited.
+
+#### Option B: Environment Variables Only
+
+Pass environment variables directly — no additional YAML files needed:
+
+```sh
+VAULT_URI=https://vault.prod.example.com:8200 \
+VAULT_TOKEN=s.xxxxx \
+MTLS_KEYSTORE_PATH=/etc/certs/keystore.jks \
+MTLS_KEYSTORE_PASSWORD=secret \
+MTLS_TRUSTSTORE_PATH=/etc/certs/truststore.jks \
+MTLS_TRUSTSTORE_PASSWORD=secret \
+OAUTH2_TOKEN_URI=https://idp.prod.example.com/realms/mng-node/protocol/openid-connect/token \
+MANAGEMENT_NODE_BASE_URL=https://management-node.prod.example.com:8090 \
+CERT_DEST_PATH=/etc/federator/secrets/ \
+LOG_LEVEL_APP=INFO \
+LOG_LEVEL_SPRING_SECURITY=WARN \
+java -jar target/federator-certificate-manager-1.0.1.jar
+```
+
+This approach works well for container orchestrators (Docker, Kubernetes) where environment variables are the standard configuration mechanism.
+
+#### Option C: External Config File
+
+Point to a config file outside the JAR:
+
+```sh
+java -jar target/federator-certificate-manager-1.0.1.jar \
+  --spring.config.location=file:/etc/federator/application.yml
+```
+
+### Step 5: Run the Application
+
+```sh
+# Using Maven (development)
+mvn spring-boot:run
+
+# Using the JAR directly
+java -jar target/federator-certificate-manager-1.0.1.jar
+
+# With a Spring profile
+java -jar target/federator-certificate-manager-1.0.1.jar --spring.profiles.active=prod
+```
+
+### Step 5: Verify Operation
+
+Check the application logs for successful startup:
+
+```
+INFO  CertificateRenewalJob - Starting certificate renewal check...
+INFO  CertificateManagerServiceImpl - Intermediate CA is valid
+INFO  CertificateManagerServiceImpl - Certificate is valid. No renewal needed.
+INFO  CertificateSyncJob - Starting certificate sync...
+INFO  KeyStoreSyncServiceImpl - Keystore is up to date, skipping write
+```
+
+---
+
+## Uninstallation
+
+### 1. Stop the Service
+
+```sh
+# If running as a systemd service
+sudo systemctl stop federator-certificate-manager
+sudo systemctl disable federator-certificate-manager
+
+# If running as a process
+kill $(pgrep -f federator-certificate-manager)
+```
+
+### 2. Remove Application Artifacts
+
+```sh
+# Remove the application JAR and configuration
+rm -rf /opt/federator-certificate-manager/
+rm -f /etc/systemd/system/federator-certificate-manager.service
+
+# Remove generated keystores and passwords
+rm -rf /etc/federator/secrets/
+```
+
+### 3. Clean Up Vault Secrets (Optional)
+
+```sh
+# Remove all secrets under the configured path
+vault kv metadata delete pki-client/node-net/client/keypair
+vault kv metadata delete pki-client/node-net/client/certificate
+vault kv metadata delete pki-client/node-net/client/ca-chain
+vault kv metadata delete pki-client/node-net/client/intermediate-ca
+vault kv metadata delete pki-client/node-net/client/keystore-password
+vault kv metadata delete pki-client/node-net/client/truststore-password
+```
+
+### 4. Revoke Vault Token (Optional)
+
+```sh
+vault token revoke ${VAULT_TOKEN}
+```
+
+### 5. Remove mTLS Keystores (Optional)
+
+```sh
+rm -f /etc/certs/keystore.jks /etc/certs/truststore.jks
+```
+
+
+---
+
+## Technology Stack
+
+| Category | Technology | Version |
+|----------|-----------|---------|
+| Runtime | Java (JDK) | 21 |
+| Framework | Spring Boot | 3.5.5 |
+| Cloud | Spring Cloud (Vault) | 2025.0.0 |
+| Cryptography | Bouncy Castle | 1.83 |
+| HTTP Client | Apache HttpClient 5 | managed |
+| Caching | Caffeine | managed |
+| DTO Mapping | ModelMapper | 3.2.0 |
+| Build | Apache Maven | 3.9+ |
+| Formatting | Spotless (Palantir) | 2.46.1 |
+| Coverage | JaCoCo | 0.8.13 |
+| SBOM | CycloneDX | 2.9.1 |
+| Testing | JUnit 5 + Mockito | 5.10.0 |
+
+---
+
+## Public Funding Acknowledgment
+
+This repository has been developed with public funding as part of the National Digital Twin Programme (NDTP), a UK Government initiative. NDTP, alongside its partners, has invested in this work to advance open, secure, and reusable digital twin technologies for any organisation, whether from the public or private sector, irrespective of size.
 
 ## Licensing
 
 This repository, including all source code, documentation, configuration files, and related materials, is licensed under the:
 
-**NDTP InnerSource Licence – Version 1.0**  
+**NDTP InnerSource Licence – Version 1.0**
 See [LICENSE.md](LICENSE.md) for the full licence text.
 
-> ⚠️ This repository is **not open source**.  
+> This repository is **not open source**.
 > Redistribution, disclosure, or publication of any part of this repository is prohibited without the **explicit, written approval** of the NDTP Management Team.
 
 All intellectual property rights are held by the **Department for Business and Trade (UK)** as the governing entity for the National Digital Twin Programme (NDTP).
 
-## Security and Responsible Disclosure  
-We take security seriously. If you believe you have found a security vulnerability in this repository, please follow our responsible disclosure process outlined in `SECURITY.md`.  
+## Security and Responsible Disclosure
+
+We take security seriously. If you believe you have found a security vulnerability in this repository, please follow our responsible disclosure process outlined in `SECURITY.md`.
 
 ## Software Bill of Materials (SBOM)
 
-This project provides a Software Bill of Materials (SBOM) to help users and integrators understand its dependencies.
+This project generates a CycloneDX SBOM during the `package` phase:
 
-### Current SBOM
-Download the [latest SBOM for this codebase](../../dependency-graph/sbom) to view the current list of components used in this repository.
+```sh
+mvn package
+# Output: target/federator-certificate-manager-1.0.0.jar
+```
 
-## Contributing  
-We welcome contributions that align with the Programme’s objectives. Please read our `CONTRIBUTING.md` guidelines before submitting pull requests.  
+Download the [latest SBOM for this codebase](../../dependency-graph/sbom) to view the current list of components.
 
-## Acknowledgements  
-This repository has benefited from collaboration with various organisations. For a list of acknowledgments, see `ACKNOWLEDGEMENTS.md`.  
+## Contributing
 
-## Support and Contact  
+We welcome contributions that align with the Programme's objectives. Please read our `CONTRIBUTING.md` guidelines before submitting pull requests.
+
+## Support and Contact
+
 For questions or support, check our Issues or contact the NDTP team by emailing ndtp@businessandtrade.gov.uk.
 
-**Maintained by the National Digital Twin Programme (NDTP).**  
+**Maintained by the National Digital Twin Programme (NDTP).**
 
 © Crown Copyright 2025. This work has been developed by the National Digital Twin Programme and is legally attributed to the Department for Business and Trade (UK) as the governing entity.

@@ -1,0 +1,102 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * © Crown Copyright 2026. This work has been developed by the National Digital Twin Programme and is legally
+ * attributed to the Department for Business and Trade (UK) as the governing entity.
+ */
+
+package uk.gov.dbt.ndtp.federator.certificate.manager.service;
+
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.stereotype.Service;
+import org.springframework.web.client.RestClient;
+import uk.gov.dbt.ndtp.federator.certificate.manager.exception.ManagementNodeException;
+import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.CertificateResponseDTO;
+import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.SignCertRequestDTO;
+import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.SignCertResponseDTO;
+import uk.gov.dbt.ndtp.federator.certificate.manager.service.idp.TokenCacheService;
+
+/**
+ * Implementation of the ManagementNodeService for interacting with Management Node APIs.
+ * Uses mTLS and Bearer token authentication.
+ */
+@Slf4j
+@Service
+public class ManagementNodeServiceImpl implements ManagementNodeService {
+
+    public static final String INTERMEDIATE_CERT_PATH = "/api/v1/certificate/intermediate";
+    public static final String SIGN_CSR_PATH = "/api/v1/certificate/csr/sign";
+    public static final String BEARER_PREFIX = "Bearer ";
+
+    private final RestClient restClient;
+    private final TokenCacheService tokenCacheService;
+    private final String baseUrl;
+
+    /**
+     * Constructs the ManagementNodeServiceImpl.
+     *
+     * @param mtlsRestClient the mTLS-enabled RestClient
+     * @param tokenCacheService the service providing cached OAuth2 tokens
+     * @param baseUrl the base URL of the Management Node
+     */
+    public ManagementNodeServiceImpl(
+            RestClient mtlsRestClient,
+            TokenCacheService tokenCacheService,
+            @Value("${application.management-node.base-url}") String baseUrl) {
+        this.restClient = mtlsRestClient;
+        this.tokenCacheService = tokenCacheService;
+        this.baseUrl = baseUrl;
+    }
+
+    /**
+     * Retrieves the intermediate certificate from the Management Node.
+     *
+     * @return the certificate response
+     * @throws ManagementNodeException if the API call fails
+     */
+    @Override
+    public CertificateResponseDTO getIntermediateCertificate() {
+        String token = tokenCacheService.getToken();
+        String url = baseUrl + INTERMEDIATE_CERT_PATH;
+
+        log.debug("Requesting intermediate certificate from {}", url);
+
+        try {
+            return restClient
+                    .get()
+                    .uri(url)
+                    .header(HttpHeaders.AUTHORIZATION, BEARER_PREFIX + token)
+                    .retrieve()
+                    .body(CertificateResponseDTO.class);
+        } catch (Exception e) {
+            throw new ManagementNodeException("Failed to retrieve intermediate certificate", e);
+        }
+    }
+
+    /**
+     * Sends a CSR to be signed by the Management Node.
+     *
+     * @param request CSR request
+     * @return signed certificate response
+     */
+    @Override
+    public SignCertResponseDTO signCertificate(SignCertRequestDTO request) {
+        String token = tokenCacheService.getToken();
+        String url = baseUrl + SIGN_CSR_PATH;
+
+        log.debug("Requesting certificate signing from {}", url);
+
+        try {
+            return restClient
+                    .post()
+                    .uri(url)
+                    .header(HttpHeaders.AUTHORIZATION, BEARER_PREFIX + token)
+                    .body(request)
+                    .retrieve()
+                    .body(SignCertResponseDTO.class);
+        } catch (Exception e) {
+            throw new ManagementNodeException("Failed to sign certificate", e);
+        }
+    }
+}

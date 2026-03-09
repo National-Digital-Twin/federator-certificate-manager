@@ -12,3 +12,4 @@
 .idea/
 *.tmproj
 .vscode/
+/target/
