@@ -66,16 +66,16 @@ public class RestClientConfig {
                     .loadTrustMaterial(trustStore, null)
                     .build();
 
-                ConnectionConfig connectionConfig = ConnectionConfig.custom()
-                        .setConnectTimeout(Timeout.of(10, TimeUnit.SECONDS))
-                        .setSocketTimeout(Timeout.of(30, TimeUnit.SECONDS))
-                        .setTimeToLive(TimeValue.ofHours(1))
-                        .build();
+            ConnectionConfig connectionConfig = ConnectionConfig.custom()
+                    .setConnectTimeout(Timeout.of(10, TimeUnit.SECONDS))
+                    .setSocketTimeout(Timeout.of(30, TimeUnit.SECONDS))
+                    .setTimeToLive(TimeValue.ofHours(1))
+                    .build();
 
             return PoolingHttpClientConnectionManagerBuilder.create()
-                        .setTlsSocketStrategy(new DefaultClientTlsStrategy(sslContext))
-                        .setDefaultConnectionConfig(connectionConfig)
-                        .build();
+                    .setTlsSocketStrategy(new DefaultClientTlsStrategy(sslContext))
+                    .setDefaultConnectionConfig(connectionConfig)
+                    .build();
         } catch (Exception e) {
             throw new RestClientConfigurationException("Failed to configure mTLS HttpClient", e);
         }
