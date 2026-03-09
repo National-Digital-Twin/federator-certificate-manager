@@ -31,9 +31,7 @@ import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
-import org.apache.hc.client5.http.io.HttpClientConnectionManager;
 import org.apache.hc.core5.pool.PoolStats;
 import org.apache.hc.core5.util.TimeValue;
 import org.springframework.stereotype.Service;
@@ -74,6 +72,7 @@ public class KeyStoreSyncServiceImpl implements KeyStoreSyncService {
         String certificatePem = vaultSecretProvider.getCertificate();
         CreateKeyResponseDTO keyPair = vaultSecretProvider.getKeyPair();
         List<String> caChain = vaultSecretProvider.getCaChain();
+        boolean expireConnections = false;
 
         if (certificatePem != null && keyPair != null && keyPair.getPrivateKeyPem() != null) {
             Path keystorePath = basePath.resolve(config.getKeystoreFile());
@@ -95,8 +94,8 @@ public class KeyStoreSyncServiceImpl implements KeyStoreSyncService {
                 validateKeyStore(keystoreBytes, keystorePassword, config.getKeystoreAlias());
                 fileSystemService.atomicWrite(keystorePath, keystoreBytes);
                 log.info("Keystore synchronized to {}", keystorePath);
+                expireConnections = true;
 
-                expireActiveConnectionsFollowingCredentialUpdate();
             } else {
                 log.debug("Keystore at {} is already in sync with Vault. Skipping update.", keystorePath);
             }
@@ -115,8 +114,7 @@ public class KeyStoreSyncServiceImpl implements KeyStoreSyncService {
                 validateTrustStore(truststoreBytes, truststorePassword);
                 fileSystemService.atomicWrite(truststorePath, truststoreBytes);
                 log.info("Truststore synchronized to {}", truststorePath);
-
-                expireActiveConnectionsFollowingCredentialUpdate();
+                expireConnections = true;
             } else {
                 log.debug("Truststore at {} is already in sync with Vault. Skipping update.", truststorePath);
             }
@@ -124,6 +122,10 @@ public class KeyStoreSyncServiceImpl implements KeyStoreSyncService {
             writePasswordToFile(truststorePath, config.getTruststorePasswordFile(), truststorePassword);
         } else {
             log.warn("Missing CA chain in Vault. Skipping truststore synchronization.");
+        }
+
+        if (expireConnections) {
+            expireActiveConnectionsFollowingCredentialUpdate();
         }
     }
 
@@ -290,11 +292,10 @@ public class KeyStoreSyncServiceImpl implements KeyStoreSyncService {
         PoolStats stats = connectionManager.getTotalStats();
 
         log.info(
-            "Connection pool after certificate rotation - available: {}, leased: {}, pending: {}, max: {}",
-            stats.getAvailable(),
-            stats.getLeased(),
-            stats.getPending(),
-            stats.getMax()
-        );
+                "Connection pool after certificate rotation - available: {}, leased: {}, pending: {}, max: {}",
+                stats.getAvailable(),
+                stats.getLeased(),
+                stats.getPending(),
+                stats.getMax());
     }
 }

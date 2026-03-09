@@ -22,7 +22,6 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
-
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
 import org.apache.hc.core5.pool.PoolStats;
 import org.apache.hc.core5.util.TimeValue;
@@ -274,6 +273,7 @@ class KeyStoreSyncServiceImplTest {
         when(vaultSecretProvider.getKeyPair()).thenReturn(keyPair);
         when(vaultSecretProvider.getCaChain()).thenReturn(List.of(caPem));
         when(keyStoreService.createTrustStore(any(), anyString())).thenReturn(validTruststoreBytes);
+        when(connectionManager.getTotalStats()).thenReturn(new PoolStats(0, 0, 0, 0));
 
         keyStoreSyncService.syncKeyStoresToFilesystem();
 
@@ -291,6 +291,7 @@ class KeyStoreSyncServiceImplTest {
         when(vaultSecretProvider.getCaChain()).thenReturn(List.of(caPem, caPem));
         byte[] newTruststoreBytes = realKeyStoreService.createTrustStore(List.of(caPem, caPem), "ts-pass");
         when(keyStoreService.createTrustStore(any(), anyString())).thenReturn(newTruststoreBytes);
+        when(connectionManager.getTotalStats()).thenReturn(new PoolStats(0, 0, 0, 0));
 
         keyStoreSyncService.syncKeyStoresToFilesystem();
 
@@ -412,8 +413,8 @@ class KeyStoreSyncServiceImplTest {
     @Test
     void syncKeyStoresToFilesystem_propagatesFileSystemExceptionFromPasswordWrite() {
         FileSystemService mockFs = mock(FileSystemService.class);
-        KeyStoreSyncServiceImpl serviceWithMockFs =
-                new KeyStoreSyncServiceImpl(certificateProperties, vaultSecretProvider, keyStoreService, mockFs, connectionManager);
+        KeyStoreSyncServiceImpl serviceWithMockFs = new KeyStoreSyncServiceImpl(
+                certificateProperties, vaultSecretProvider, keyStoreService, mockFs, connectionManager);
 
         CreateKeyResponseDTO keyPair = CreateKeyResponseDTO.builder()
                 .publicKeyPem("pub")
@@ -426,7 +427,6 @@ class KeyStoreSyncServiceImplTest {
         when(keyStoreService.createKeyStore(anyString(), anyString(), any(), anyString(), anyString()))
                 .thenReturn(validKeystoreBytes);
         when(mockFs.needsUpdate(any(), any())).thenReturn(true);
-        when(connectionManager.getTotalStats()).thenReturn(new PoolStats(0, 0, 0, 0));
         doNothing().when(mockFs).atomicWrite(any(), any());
         doThrow(new FileSystemException("disk full")).when(mockFs).write(any(), any());
 
