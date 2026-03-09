@@ -14,10 +14,12 @@ import org.apache.hc.client5.http.config.ConnectionConfig;
 import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
 import org.apache.hc.client5.http.io.HttpClientConnectionManager;
 import org.apache.hc.client5.http.ssl.DefaultClientTlsStrategy;
 import org.apache.hc.core5.ssl.SSLContextBuilder;
+import org.apache.hc.core5.util.TimeValue;
 import org.apache.hc.core5.util.Timeout;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -49,12 +51,12 @@ public class RestClientConfig {
     private String keyStoreType;
 
     /**
-     * Creates a CloseableHttpClient bean configured for mTLS communication with timeouts.
+     * Creates a PoolingHttpClientConnectionManager bean configured for mTLS communication with timeouts.
      *
-     * @return a configured CloseableHttpClient instance
+     * @return a configured PoolingHttpClientConnectionManager instance
      */
     @Bean
-    public CloseableHttpClient httpClient() {
+    public PoolingHttpClientConnectionManager connectionManager() {
         try {
             KeyStore keyStore = loadKeyStore(keyStorePath, keyStorePassword, keyStoreType);
             KeyStore trustStore = loadKeyStore(trustStorePath, trustStorePassword, keyStoreType);
@@ -64,28 +66,38 @@ public class RestClientConfig {
                     .loadTrustMaterial(trustStore, null)
                     .build();
 
-            ConnectionConfig connectionConfig = ConnectionConfig.custom()
-                    .setConnectTimeout(Timeout.of(10, TimeUnit.SECONDS))
-                    .setSocketTimeout(Timeout.of(30, TimeUnit.SECONDS))
-                    .build();
+                ConnectionConfig connectionConfig = ConnectionConfig.custom()
+                        .setConnectTimeout(Timeout.of(10, TimeUnit.SECONDS))
+                        .setSocketTimeout(Timeout.of(30, TimeUnit.SECONDS))
+                        .setTimeToLive(TimeValue.ofHours(1))
+                        .build();
 
-            HttpClientConnectionManager cm = PoolingHttpClientConnectionManagerBuilder.create()
-                    .setTlsSocketStrategy(new DefaultClientTlsStrategy(sslContext))
-                    .setDefaultConnectionConfig(connectionConfig)
-                    .build();
-
-            RequestConfig requestConfig = RequestConfig.custom()
-                    .setResponseTimeout(Timeout.of(30, TimeUnit.SECONDS))
-                    .build();
-
-            return HttpClients.custom()
-                    .setConnectionManager(cm)
-                    .setDefaultRequestConfig(requestConfig)
-                    .evictExpiredConnections()
-                    .build();
+            return PoolingHttpClientConnectionManagerBuilder.create()
+                        .setTlsSocketStrategy(new DefaultClientTlsStrategy(sslContext))
+                        .setDefaultConnectionConfig(connectionConfig)
+                        .build();
         } catch (Exception e) {
             throw new RestClientConfigurationException("Failed to configure mTLS HttpClient", e);
         }
+    }
+
+    /**
+     * Creates a CloseableHttpClient bean configured for mTLS communication with timeouts.
+     *
+     * @return a configured CloseableHttpClient instance
+     */
+    @Bean
+    public CloseableHttpClient httpClient(HttpClientConnectionManager connectionManager) {
+        RequestConfig requestConfig = RequestConfig.custom()
+                .setResponseTimeout(Timeout.of(30, TimeUnit.SECONDS))
+                .build();
+
+        return HttpClients.custom()
+                .setConnectionManager(connectionManager)
+                .setConnectionReuseStrategy((request, response, context) -> false)
+                .setDefaultRequestConfig(requestConfig)
+                .evictExpiredConnections()
+                .build();
     }
 
     /**

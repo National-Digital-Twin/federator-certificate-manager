@@ -31,6 +31,11 @@ import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
+import org.apache.hc.client5.http.io.HttpClientConnectionManager;
+import org.apache.hc.core5.pool.PoolStats;
+import org.apache.hc.core5.util.TimeValue;
 import org.springframework.stereotype.Service;
 import uk.gov.dbt.ndtp.federator.certificate.manager.config.CertificateProperties;
 import uk.gov.dbt.ndtp.federator.certificate.manager.exception.FileSystemException;
@@ -55,6 +60,7 @@ public class KeyStoreSyncServiceImpl implements KeyStoreSyncService {
     private final VaultSecretProvider vaultSecretProvider;
     private final KeyStoreService keyStoreService;
     private final FileSystemService fileSystemService;
+    private final PoolingHttpClientConnectionManager connectionManager;
 
     @Override
     public void syncKeyStoresToFilesystem() {
@@ -89,6 +95,8 @@ public class KeyStoreSyncServiceImpl implements KeyStoreSyncService {
                 validateKeyStore(keystoreBytes, keystorePassword, config.getKeystoreAlias());
                 fileSystemService.atomicWrite(keystorePath, keystoreBytes);
                 log.info("Keystore synchronized to {}", keystorePath);
+
+                expireActiveConnectionsFollowingCredentialUpdate();
             } else {
                 log.debug("Keystore at {} is already in sync with Vault. Skipping update.", keystorePath);
             }
@@ -107,6 +115,8 @@ public class KeyStoreSyncServiceImpl implements KeyStoreSyncService {
                 validateTrustStore(truststoreBytes, truststorePassword);
                 fileSystemService.atomicWrite(truststorePath, truststoreBytes);
                 log.info("Truststore synchronized to {}", truststorePath);
+
+                expireActiveConnectionsFollowingCredentialUpdate();
             } else {
                 log.debug("Truststore at {} is already in sync with Vault. Skipping update.", truststorePath);
             }
@@ -270,5 +280,21 @@ public class KeyStoreSyncServiceImpl implements KeyStoreSyncService {
         } catch (KeyStoreException | IOException | NoSuchAlgorithmException | CertificateException e) {
             throw new KeyStoreCreationException("Failed to validate generated truststore", e);
         }
+    }
+
+    private void expireActiveConnectionsFollowingCredentialUpdate() {
+        connectionManager.closeIdle(TimeValue.ZERO_MILLISECONDS);
+        connectionManager.closeExpired();
+
+        log.info("HTTP connection pool cleared after new certificate written to keystore");
+        PoolStats stats = connectionManager.getTotalStats();
+
+        log.info(
+            "Connection pool after certificate rotation - available: {}, leased: {}, pending: {}, max: {}",
+            stats.getAvailable(),
+            stats.getLeased(),
+            stats.getPending(),
+            stats.getMax()
+        );
     }
 }

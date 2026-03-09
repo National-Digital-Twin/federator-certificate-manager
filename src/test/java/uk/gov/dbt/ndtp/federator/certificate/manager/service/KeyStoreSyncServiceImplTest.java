@@ -22,6 +22,10 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
+import org.apache.hc.core5.pool.PoolStats;
+import org.apache.hc.core5.util.TimeValue;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.cert.X509v3CertificateBuilder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
@@ -57,6 +61,9 @@ class KeyStoreSyncServiceImplTest {
     @Mock
     private KeyStoreService keyStoreService;
 
+    @Mock
+    private PoolingHttpClientConnectionManager connectionManager;
+
     private FileSystemServiceImpl realFileSystemService;
 
     private CertificateProperties certificateProperties;
@@ -84,7 +91,7 @@ class KeyStoreSyncServiceImplTest {
         dest.setTruststorePasswordFile("truststore.password");
 
         keyStoreSyncService = new KeyStoreSyncServiceImpl(
-                certificateProperties, vaultSecretProvider, keyStoreService, realFileSystemService);
+                certificateProperties, vaultSecretProvider, keyStoreService, realFileSystemService, connectionManager);
 
         // Generate test certs and real keystore bytes
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
@@ -132,6 +139,7 @@ class KeyStoreSyncServiceImplTest {
         when(keyStoreService.createKeyStore(anyString(), anyString(), any(), anyString(), anyString()))
                 .thenReturn(validKeystoreBytes);
         when(keyStoreService.createTrustStore(any(), anyString())).thenReturn(validTruststoreBytes);
+        when(connectionManager.getTotalStats()).thenReturn(new PoolStats(0, 0, 0, 0));
 
         keyStoreSyncService.syncKeyStoresToFilesystem();
 
@@ -187,6 +195,7 @@ class KeyStoreSyncServiceImplTest {
         when(vaultSecretProvider.getCaChain()).thenReturn(List.of());
         when(keyStoreService.createKeyStore(anyString(), anyString(), any(), anyString(), anyString()))
                 .thenReturn(validKeystoreBytes);
+        when(connectionManager.getTotalStats()).thenReturn(new PoolStats(0, 0, 0, 0));
 
         keyStoreSyncService.syncKeyStoresToFilesystem();
 
@@ -205,6 +214,7 @@ class KeyStoreSyncServiceImplTest {
         when(vaultSecretProvider.getCaChain()).thenReturn(null);
         when(keyStoreService.createKeyStore(anyString(), anyString(), any(), anyString(), anyString()))
                 .thenReturn(validKeystoreBytes);
+        when(connectionManager.getTotalStats()).thenReturn(new PoolStats(0, 0, 0, 0));
 
         keyStoreSyncService.syncKeyStoresToFilesystem();
 
@@ -226,6 +236,7 @@ class KeyStoreSyncServiceImplTest {
         when(keyStoreService.createKeyStore(anyString(), anyString(), any(), anyString(), anyString()))
                 .thenReturn(validKeystoreBytes);
         when(keyStoreService.createTrustStore(any(), anyString())).thenReturn(validTruststoreBytes);
+        when(connectionManager.getTotalStats()).thenReturn(new PoolStats(0, 0, 0, 0));
 
         keyStoreSyncService.syncKeyStoresToFilesystem();
 
@@ -247,6 +258,7 @@ class KeyStoreSyncServiceImplTest {
         when(keyStoreService.createKeyStore(anyString(), anyString(), any(), anyString(), anyString()))
                 .thenReturn(validKeystoreBytes);
         when(keyStoreService.createTrustStore(any(), anyString())).thenReturn(validTruststoreBytes);
+        when(connectionManager.getTotalStats()).thenReturn(new PoolStats(0, 0, 0, 0));
 
         keyStoreSyncService.syncKeyStoresToFilesystem();
 
@@ -301,6 +313,7 @@ class KeyStoreSyncServiceImplTest {
         when(keyStoreService.createKeyStore(anyString(), anyString(), any(), anyString(), anyString()))
                 .thenReturn(validKeystoreBytes);
         when(keyStoreService.createTrustStore(any(), anyString())).thenReturn(validTruststoreBytes);
+        when(connectionManager.getTotalStats()).thenReturn(new PoolStats(0, 0, 0, 0));
 
         keyStoreSyncService.syncKeyStoresToFilesystem();
 
@@ -322,6 +335,7 @@ class KeyStoreSyncServiceImplTest {
         when(vaultSecretProvider.getCaChain()).thenReturn(Collections.emptyList());
         when(keyStoreService.createKeyStore(anyString(), anyString(), any(), anyString(), anyString()))
                 .thenReturn(ksNoCaChain);
+        when(connectionManager.getTotalStats()).thenReturn(new PoolStats(0, 0, 0, 0));
 
         keyStoreSyncService.syncKeyStoresToFilesystem();
 
@@ -399,7 +413,7 @@ class KeyStoreSyncServiceImplTest {
     void syncKeyStoresToFilesystem_propagatesFileSystemExceptionFromPasswordWrite() {
         FileSystemService mockFs = mock(FileSystemService.class);
         KeyStoreSyncServiceImpl serviceWithMockFs =
-                new KeyStoreSyncServiceImpl(certificateProperties, vaultSecretProvider, keyStoreService, mockFs);
+                new KeyStoreSyncServiceImpl(certificateProperties, vaultSecretProvider, keyStoreService, mockFs, connectionManager);
 
         CreateKeyResponseDTO keyPair = CreateKeyResponseDTO.builder()
                 .publicKeyPem("pub")
@@ -412,6 +426,7 @@ class KeyStoreSyncServiceImplTest {
         when(keyStoreService.createKeyStore(anyString(), anyString(), any(), anyString(), anyString()))
                 .thenReturn(validKeystoreBytes);
         when(mockFs.needsUpdate(any(), any())).thenReturn(true);
+        when(connectionManager.getTotalStats()).thenReturn(new PoolStats(0, 0, 0, 0));
         doNothing().when(mockFs).atomicWrite(any(), any());
         doThrow(new FileSystemException("disk full")).when(mockFs).write(any(), any());
 
@@ -446,10 +461,13 @@ class KeyStoreSyncServiceImplTest {
         when(keyStoreService.createKeyStore(anyString(), anyString(), any(), anyString(), anyString()))
                 .thenReturn(validKeystoreBytes);
         when(keyStoreService.createTrustStore(any(), anyString())).thenReturn(validTruststoreBytes);
+        when(connectionManager.getTotalStats()).thenReturn(new PoolStats(0, 0, 0, 0));
 
         keyStoreSyncService.syncKeyStoresToFilesystem();
 
         verify(keyStoreService).createKeyStore(anyString(), anyString(), any(), anyString(), anyString());
+        verify(connectionManager).closeIdle(TimeValue.ZERO_MILLISECONDS);
+        verify(connectionManager).closeExpired();
     }
 
     @Test
@@ -470,10 +488,13 @@ class KeyStoreSyncServiceImplTest {
         when(keyStoreService.createKeyStore(anyString(), anyString(), any(), anyString(), anyString()))
                 .thenReturn(validKeystoreBytes);
         when(keyStoreService.createTrustStore(any(), anyString())).thenReturn(validTruststoreBytes);
+        when(connectionManager.getTotalStats()).thenReturn(new PoolStats(0, 0, 0, 0));
 
         keyStoreSyncService.syncKeyStoresToFilesystem();
 
         verify(keyStoreService).createKeyStore(anyString(), anyString(), any(), anyString(), anyString());
+        verify(connectionManager).closeIdle(TimeValue.ZERO_MILLISECONDS);
+        verify(connectionManager).closeExpired();
     }
 
     // --- shouldUpdateTrustStore edge cases ---
@@ -505,10 +526,13 @@ class KeyStoreSyncServiceImplTest {
         when(vaultSecretProvider.getKeyPair()).thenReturn(null);
         when(vaultSecretProvider.getCaChain()).thenReturn(List.of(caPem));
         when(keyStoreService.createTrustStore(any(), anyString())).thenReturn(validTruststoreBytes);
+        when(connectionManager.getTotalStats()).thenReturn(new PoolStats(0, 0, 0, 0));
 
         keyStoreSyncService.syncKeyStoresToFilesystem();
 
         verify(keyStoreService).createTrustStore(any(), anyString());
+        verify(connectionManager).closeIdle(TimeValue.ZERO_MILLISECONDS);
+        verify(connectionManager).closeExpired();
     }
 
     @Test
@@ -526,10 +550,13 @@ class KeyStoreSyncServiceImplTest {
         when(vaultSecretProvider.getKeyPair()).thenReturn(null);
         when(vaultSecretProvider.getCaChain()).thenReturn(List.of(caPem));
         when(keyStoreService.createTrustStore(any(), anyString())).thenReturn(validTruststoreBytes);
+        when(connectionManager.getTotalStats()).thenReturn(new PoolStats(0, 0, 0, 0));
 
         keyStoreSyncService.syncKeyStoresToFilesystem();
 
         verify(keyStoreService).createTrustStore(any(), anyString());
+        verify(connectionManager).closeIdle(TimeValue.ZERO_MILLISECONDS);
+        verify(connectionManager).closeExpired();
     }
 
     // --- resolvePassword ---
@@ -590,6 +617,7 @@ class KeyStoreSyncServiceImplTest {
         when(keyStoreService.createKeyStore(anyString(), anyString(), any(), anyString(), anyString()))
                 .thenReturn(validKeystoreBytes);
         when(keyStoreService.createTrustStore(any(), anyString())).thenReturn(validTruststoreBytes);
+        when(connectionManager.getTotalStats()).thenReturn(new PoolStats(0, 0, 0, 0));
 
         assertDoesNotThrow(() -> keyStoreSyncService.syncKeyStoresToFilesystem());
     }
@@ -613,6 +641,7 @@ class KeyStoreSyncServiceImplTest {
         when(vaultSecretProvider.getCertificate()).thenReturn(certPem);
         when(vaultSecretProvider.getKeyPair()).thenReturn(keyPair);
         when(vaultSecretProvider.getCaChain()).thenReturn(List.of(caPem));
+        when(connectionManager.getTotalStats()).thenReturn(new PoolStats(0, 0, 0, 0));
 
         byte[] ksBytes = realKeyStoreService.createKeyStore(
                 privateKeyPem, certPem, List.of(caPem), "vault-ks-pass", "federator");

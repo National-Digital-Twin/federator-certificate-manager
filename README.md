@@ -149,6 +149,13 @@ keytool -importcert -alias ca -file ca-cert.pem \
   -keystore truststore.jks -storepass changeit -noprompt
 ```
 
+To simulate starting from a bootstrap certificate, run the following command to provision a certificate with a short expiry window:
+```
+make bootstrap-test-certs-clean
+```
+
+If running in tandem with management node and IdP, this script will import the CA certificate to ensure trusted communication between components. The location of this certificate can be set within the `Makefile` in the `ROOT_CA_DIR` variable. 
+
 ### Step 3: Configure the Application
 
 Every property in `application.yml` is backed by an environment variable with a sensible default. You can override any value by setting the corresponding environment variable — no YAML editing required.
