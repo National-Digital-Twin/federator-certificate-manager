@@ -73,22 +73,24 @@ while [[ "${1:-}" == --* ]]; do
 done
 
 # ---- args ----
-if [ "$#" -ne 3 ]; then
-  echo "Usage: $0 [--clean] [--empty-keystore] <target_dir> <validity_minutes> <root_ca_dir>"
+if [ "$#" -ne 5 ]; then
+  echo "Usage: $0 [--clean] [--empty-keystore] <target_dir> <validity_minutes> <root_ca_dir> <keystore_pass> <truststore_pass>"
   exit 1
 fi
 
 TARGET_DIR="$1"
 VALIDITY_MINUTES="$2"
 ROOT_CA_DIR="$3"
+KEYSTOREPASS="$4"
+TRUSTSTOREPASS="$5"
+
 
 ROOT_CRT="$ROOT_CA_DIR/rootCA.crt"
 ROOT_KEY="$ROOT_CA_DIR/rootCA.key"
 
 # ---- config ----
 ALIAS="bootstrap"
-STOREPASS="changeit"
-CN="bootstrap"
+CN="api.acme-digital.co.uk"
 
 KEY="$TARGET_DIR/bootstrap.key"
 CSR="$TARGET_DIR/bootstrap.csr"
@@ -179,15 +181,15 @@ if [ "$EMPTY_KEYSTORE" = false ]; then
     -in "$CERT" \
     -name "$ALIAS" \
     -out "$TMP_P12" \
-    -passout pass:"$STOREPASS"
+    -passout pass:"$KEYSTOREPASS"
 
   keytool -importkeystore \
     -destkeystore "$KEYSTORE" \
     -deststoretype PKCS12 \
-    -deststorepass "$STOREPASS" \
+    -deststorepass "$KEYSTOREPASS" \
     -srckeystore "$TMP_P12" \
     -srcstoretype PKCS12 \
-    -srcstorepass "$STOREPASS"
+    -srcstorepass "$KEYSTOREPASS"
 
 else
 
@@ -198,14 +200,14 @@ else
     -keyalg RSA \
     -keystore "$KEYSTORE" \
     -storetype PKCS12 \
-    -storepass "$STOREPASS" \
+    -storepass "$KEYSTOREPASS" \
     -dname "CN=temp" \
     -validity 1
 
   keytool -delete \
     -alias temp-entry \
     -keystore "$KEYSTORE" \
-    -storepass "$STOREPASS"
+    -storepass "$KEYSTOREPASS"
 
 fi
 
@@ -216,7 +218,7 @@ keytool -importcert \
   -alias rootca \
   -keystore "$TRUSTSTORE" \
   -storetype PKCS12 \
-  -storepass "$STOREPASS" \
+  -storepass "$TRUSTSTOREPASS" \
   -noprompt
 
 if [ "$EMPTY_KEYSTORE" = false ]; then
@@ -225,7 +227,7 @@ if [ "$EMPTY_KEYSTORE" = false ]; then
     -file "$CERT" \
     -keystore "$TRUSTSTORE" \
     -storetype PKCS12 \
-    -storepass "$STOREPASS" \
+    -storepass "$TRUSTSTOREPASS" \
     -noprompt
 fi
 

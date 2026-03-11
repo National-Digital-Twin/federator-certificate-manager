@@ -7,6 +7,9 @@
 package uk.gov.dbt.ndtp.federator.certificate.manager.service.pki;
 
 import java.io.ByteArrayOutputStream;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.security.KeyStore;
 import java.security.PrivateKey;
 import java.security.cert.Certificate;
@@ -77,10 +80,16 @@ public class KeyStoreService {
      * @return the serialized PKCS12 truststore as a byte array
      * @throws Exception if truststore creation or serialization fails
      */
-    public byte[] createTrustStore(List<String> caChain, String password) {
+    public byte[] createTrustStore(List<String> caChain, String password, Path existingTrustStore) {
         try {
             KeyStore ks = KeyStore.getInstance("PKCS12");
-            ks.load(null, null);
+            if (Files.exists(existingTrustStore)) {
+                try (InputStream in = Files.newInputStream(existingTrustStore)) {
+                    ks.load(in, password.toCharArray());
+                }
+            } else {
+                ks.load(null, null);
+            }
 
             if (caChain != null) {
                 for (int i = 0; i < caChain.size(); i++) {
