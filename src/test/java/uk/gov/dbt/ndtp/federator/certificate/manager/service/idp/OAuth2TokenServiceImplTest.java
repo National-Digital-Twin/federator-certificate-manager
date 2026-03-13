@@ -21,6 +21,8 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
+
+import uk.gov.dbt.ndtp.federator.certificate.manager.client.MtlsHttpClientBuilder;
 import uk.gov.dbt.ndtp.federator.certificate.manager.exception.OAuth2TokenException;
 
 @ExtendWith(MockitoExtension.class)
@@ -29,6 +31,8 @@ class OAuth2TokenServiceImplTest {
     @Test
     void getAccessToken_returnsTokenResponse() {
         RestClient restClient = mock(RestClient.class, RETURNS_DEEP_STUBS);
+        MtlsHttpClientBuilder builder = mock(MtlsHttpClientBuilder.class);
+        when(builder.buildRestClient()).thenReturn(restClient);
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("access_token", "srv-token");
@@ -43,8 +47,7 @@ class OAuth2TokenServiceImplTest {
                         .body(any(ParameterizedTypeReference.class)))
                 .thenReturn(payload);
 
-        OAuth2TokenServiceImpl service = new OAuth2TokenServiceImpl(restClient, "https://example/token", "CLIENT");
-
+        OAuth2TokenServiceImpl service = new OAuth2TokenServiceImpl(builder, "https://example/token", "CLIENT");        
         TokenResponse response = service.getAccessToken();
 
         assertEquals("srv-token", response.getAccessToken());
@@ -54,6 +57,9 @@ class OAuth2TokenServiceImplTest {
     @Test
     void getAccessToken_throwsExceptionWhenAccessTokenMissing() {
         RestClient restClient = mock(RestClient.class, RETURNS_DEEP_STUBS);
+        MtlsHttpClientBuilder builder = mock(MtlsHttpClientBuilder.class);
+        when(builder.buildRestClient()).thenReturn(restClient);
+        
 
         when(restClient
                         .post()
@@ -64,7 +70,7 @@ class OAuth2TokenServiceImplTest {
                         .body(any(ParameterizedTypeReference.class)))
                 .thenReturn(Collections.emptyMap());
 
-        OAuth2TokenServiceImpl service = new OAuth2TokenServiceImpl(restClient, "https://example/token", "CLIENT");
+        OAuth2TokenServiceImpl service = new OAuth2TokenServiceImpl(builder, "https://example/token", "CLIENT");
 
         assertThrows(OAuth2TokenException.class, service::getAccessToken);
     }
@@ -72,6 +78,8 @@ class OAuth2TokenServiceImplTest {
     @Test
     void getAccessToken_throwsExceptionWhenResponseIsNull() {
         RestClient restClient = mock(RestClient.class, RETURNS_DEEP_STUBS);
+        MtlsHttpClientBuilder builder = mock(MtlsHttpClientBuilder.class);
+        when(builder.buildRestClient()).thenReturn(restClient);
 
         when(restClient
                         .post()
@@ -82,7 +90,7 @@ class OAuth2TokenServiceImplTest {
                         .body(any(ParameterizedTypeReference.class)))
                 .thenReturn(null);
 
-        OAuth2TokenServiceImpl service = new OAuth2TokenServiceImpl(restClient, "https://example/token", "CLIENT");
+        OAuth2TokenServiceImpl service = new OAuth2TokenServiceImpl(builder, "https://example/token", "CLIENT");
 
         assertThrows(OAuth2TokenException.class, service::getAccessToken);
     }
@@ -90,6 +98,8 @@ class OAuth2TokenServiceImplTest {
     @Test
     void getAccessToken_throwsExceptionWhenRestClientFails() {
         RestClient restClient = mock(RestClient.class, RETURNS_DEEP_STUBS);
+        MtlsHttpClientBuilder builder = mock(MtlsHttpClientBuilder.class);
+        when(builder.buildRestClient()).thenReturn(restClient);
 
         when(restClient
                         .post()
@@ -100,7 +110,7 @@ class OAuth2TokenServiceImplTest {
                         .body(any(ParameterizedTypeReference.class)))
                 .thenThrow(new RuntimeException("Network error"));
 
-        OAuth2TokenServiceImpl service = new OAuth2TokenServiceImpl(restClient, "https://example/token", "CLIENT");
+        OAuth2TokenServiceImpl service = new OAuth2TokenServiceImpl(builder, "https://example/token", "CLIENT");
 
         assertThrows(OAuth2TokenException.class, service::getAccessToken);
     }

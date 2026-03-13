@@ -9,12 +9,9 @@ package uk.gov.dbt.ndtp.federator.certificate.manager.service.idp;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 
-import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
-import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
@@ -69,7 +66,7 @@ public class OAuth2TokenServiceImpl implements OAuth2TokenService {
         formData.add(GRANT_TYPE, CLIENT_CREDENTIALS);
         formData.add(CLIENT_ID, clientId);
 
-        RestClient restClient = buildRestClient();
+        RestClient restClient = httpClientBuilder.buildRestClient();
 
         try {
             Map<String, Object> response = restClient
@@ -97,13 +94,5 @@ public class OAuth2TokenServiceImpl implements OAuth2TokenService {
             log.error("Error retrieving OAuth2 token", e);
             throw new OAuth2TokenException("Error retrieving OAuth2 token", e);
         }
-    }
-
-    private RestClient buildRestClient() {
-        PoolingHttpClientConnectionManager connectionManager = httpClientBuilder.buildConnectionManager();
-        CloseableHttpClient httpClient = httpClientBuilder.buildHttpClient(connectionManager);
-        return RestClient.builder()
-                .requestFactory(new HttpComponentsClientHttpRequestFactory(httpClient))
-                .build();
     }
 }

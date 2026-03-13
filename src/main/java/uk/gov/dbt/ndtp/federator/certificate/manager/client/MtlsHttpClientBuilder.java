@@ -32,7 +32,9 @@ import org.apache.hc.client5.http.ssl.DefaultClientTlsStrategy;
 import org.apache.hc.core5.util.TimeValue;
 import org.apache.hc.core5.util.Timeout;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClient;
 
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -41,6 +43,9 @@ import uk.gov.dbt.ndtp.federator.certificate.manager.config.LoggingKeyManager;
 import uk.gov.dbt.ndtp.federator.certificate.manager.exception.RestClientConfigurationException;
 import uk.gov.dbt.ndtp.federator.certificate.manager.service.pki.VaultSecretProvider;
 
+/**
+ * Service that builds a HTTP connection manager, client and REST client from a local keystore and truststore.
+ */
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -48,8 +53,14 @@ public class MtlsHttpClientBuilder {
     @Value("${application.client.key-store}")
     private String keyStorePath;
 
+    @Value("${application.client.key-store-password}")
+    private String keyStorePassword;
+
     @Value("${application.client.trust-store}")
     private String trustStorePath;
+
+    @Value("${application.client.trust-store-password}")
+    private String trustStorePassword;
 
     @Value("${application.client.key-store-type:JKS}")
     private String keyStoreType;
@@ -58,12 +69,22 @@ public class MtlsHttpClientBuilder {
     private final CertificateProperties certificateProperties;
     private static final String PASSWORD = "password";
 
+    /**
+     * Builds a connection manager from a known keystore and truststore.
+     */
     public PoolingHttpClientConnectionManager buildConnectionManager() {
         String keyStorePassword = getKeyStorePassword();
         String trustStorePassword = getTrustStorePassword();
         return buildConnectionManager(keyStorePassword, trustStorePassword);
     }
 
+
+    /**
+     * Builds a connection manager from a known keystore and truststore.
+     * @param keyStorePassword credentials to access the keystore
+     * @param trustStorePassword credentials to access the truststore
+     * @return
+     */
     public PoolingHttpClientConnectionManager buildConnectionManager(String keyStorePassword, String trustStorePassword) {
         try {
             KeyStore keyStore = loadKeyStore(keyStorePath, keyStorePassword, keyStoreType);
@@ -73,7 +94,7 @@ public class MtlsHttpClientBuilder {
                 String alias = aliases.nextElement();
                 Certificate cert = trustStore.getCertificate(alias);
                 if (cert instanceof X509Certificate x509) {
-                    log.info("Truststore entry: {} -> {}", alias, x509.getSubjectDN());
+                    log.info("Truststore entry: {} -> {}", alias, x509.getSubjectX500Principal());
                 }
             }
             KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
@@ -107,6 +128,11 @@ public class MtlsHttpClientBuilder {
         }
     }
 
+    /**
+     * Builds an HTTP client configured with connection manager.
+     * @param connectionManager an instance of {@link HttpClientConnectionManager}
+     * @return an instance of {@link CloseableHttpClient}
+     */
     public CloseableHttpClient buildHttpClient(HttpClientConnectionManager connectionManager) {
         RequestConfig requestConfig = RequestConfig.custom()
                 .setResponseTimeout(Timeout.of(30, TimeUnit.SECONDS))
@@ -119,6 +145,18 @@ public class MtlsHttpClientBuilder {
                 .build();
     }
 
+    /**
+     * Builds an instance of {@link RestClient} with a new connection manager and http client. 
+     * @return an instance of {@link RestClient}
+     */
+    public RestClient buildRestClient() {
+        PoolingHttpClientConnectionManager connectionManager = buildConnectionManager();
+        CloseableHttpClient httpClient = buildHttpClient(connectionManager);
+        return RestClient.builder()
+                .requestFactory(new HttpComponentsClientHttpRequestFactory(httpClient))
+                .build();
+    }
+
     private String getKeyStorePassword() {
         CertificateProperties.Destination config = certificateProperties.getDestination();
         String configKeyStorePassword = config.getKeystorePassword();
@@ -126,7 +164,9 @@ public class MtlsHttpClientBuilder {
 
         Optional<String> vaultKeyStorePassword = getSecretFromVault("keystore-password");
         if (vaultKeyStorePassword.isPresent()) return vaultKeyStorePassword.get();
-        return "";
+
+        return keyStorePassword;
+
     }
 
     private String getTrustStorePassword() {
@@ -139,7 +179,7 @@ public class MtlsHttpClientBuilder {
         Optional<String> vaultTrustStorePassword = getSecretFromVault("truststore-password");
         if (vaultTrustStorePassword.isPresent()) return vaultTrustStorePassword.get();
         
-        return "";
+        return trustStorePassword;
     }
 
     private Optional<String> getSecretFromVault(String secretName) {

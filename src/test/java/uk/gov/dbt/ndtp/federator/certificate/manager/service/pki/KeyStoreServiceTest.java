@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.*;
 
 import java.io.ByteArrayInputStream;
 import java.math.BigInteger;
+import java.nio.file.Path;
 import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.KeyStore;
@@ -26,6 +27,8 @@ import org.bouncycastle.operator.ContentSigner;
 import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.io.TempDir;
+
 import uk.gov.dbt.ndtp.federator.certificate.manager.exception.KeyStoreCreationException;
 import uk.gov.dbt.ndtp.federator.certificate.manager.service.pki.cryptography.PemUtil;
 
@@ -37,6 +40,9 @@ class KeyStoreServiceTest {
     private String caPem;
     private String leafPem;
     private String privateKeyPem;
+
+    @TempDir
+    Path tempDir;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -115,7 +121,8 @@ class KeyStoreServiceTest {
     @Test
     void createTrustStore_success() throws Exception {
         String password = "trust-password";
-        byte[] tsBytes = keyStoreService.createTrustStore(List.of(caPem), password);
+        Path trustStorePath = tempDir.resolve("truststore.p12");
+        byte[] tsBytes = keyStoreService.createTrustStore(List.of(caPem), password, trustStorePath);
 
         assertNotNull(tsBytes);
         KeyStore ks = KeyStore.getInstance("PKCS12");
@@ -128,7 +135,8 @@ class KeyStoreServiceTest {
     @Test
     void createTrustStore_withNullCaChain() throws Exception {
         String password = "trust-password";
-        byte[] tsBytes = keyStoreService.createTrustStore(null, password);
+        Path trustStorePath = tempDir.resolve("truststore.p12");        
+        byte[] tsBytes = keyStoreService.createTrustStore(null, password, trustStorePath);
 
         assertNotNull(tsBytes);
         KeyStore ks = KeyStore.getInstance("PKCS12");
@@ -140,6 +148,7 @@ class KeyStoreServiceTest {
     @Test
     void createTrustStore_withMultipleCerts() throws Exception {
         String password = "trust-password";
+        Path trustStorePath = tempDir.resolve("truststore.p12");
 
         // Create a second CA cert
         KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
@@ -150,7 +159,7 @@ class KeyStoreServiceTest {
                 createCert(secondCaName, secondCaName, secondCaKeyPair.getPublic(), secondCaKeyPair.getPrivate());
         String secondCaPem = PemUtil.toPem("CERTIFICATE", secondCaCert.getEncoded());
 
-        byte[] tsBytes = keyStoreService.createTrustStore(List.of(caPem, secondCaPem), password);
+        byte[] tsBytes = keyStoreService.createTrustStore(List.of(caPem, secondCaPem), password, trustStorePath);
 
         assertNotNull(tsBytes);
         KeyStore ks = KeyStore.getInstance("PKCS12");

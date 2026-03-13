@@ -19,6 +19,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpHeaders;
 import org.springframework.web.client.RestClient;
+
+import uk.gov.dbt.ndtp.federator.certificate.manager.client.MtlsHttpClientBuilder;
 import uk.gov.dbt.ndtp.federator.certificate.manager.exception.ManagementNodeException;
 import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.CertificateResponseDTO;
 import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.SignCertRequestDTO;
@@ -29,10 +31,13 @@ import uk.gov.dbt.ndtp.federator.certificate.manager.service.idp.TokenCacheServi
 class ManagementNodeServiceImplTest {
 
     @Mock
-    private RestClient restClient;
+    private MtlsHttpClientBuilder builder;
 
     @Mock
     private TokenCacheService tokenCacheService;
+
+    @Mock
+    private RestClient restClient;
 
     private ManagementNodeServiceImpl managementNodeService;
 
@@ -40,7 +45,7 @@ class ManagementNodeServiceImplTest {
 
     @BeforeEach
     void setUp() {
-        managementNodeService = new ManagementNodeServiceImpl(restClient, tokenCacheService, baseUrl);
+        managementNodeService = new ManagementNodeServiceImpl(tokenCacheService, baseUrl, builder);
     }
 
     @Test
@@ -49,7 +54,9 @@ class ManagementNodeServiceImplTest {
         CertificateResponseDTO expectedResponse =
                 CertificateResponseDTO.builder().certificate("cert-data").build();
 
+
         when(tokenCacheService.getToken()).thenReturn(token);
+        when(builder.buildRestClient()).thenReturn(restClient);
 
         RestClient.RequestHeadersUriSpec requestHeadersUriSpec = mock(RestClient.RequestHeadersUriSpec.class);
         RestClient.RequestHeadersSpec requestHeadersSpec = mock(RestClient.RequestHeadersSpec.class);
@@ -72,6 +79,7 @@ class ManagementNodeServiceImplTest {
     void getIntermediateCertificate_throwsExceptionOnFailure() {
         when(tokenCacheService.getToken()).thenReturn("token");
         when(restClient.get()).thenThrow(new RuntimeException("API error"));
+        when(builder.buildRestClient()).thenReturn(restClient);
 
         ManagementNodeException ex =
                 assertThrows(ManagementNodeException.class, () -> managementNodeService.getIntermediateCertificate());
@@ -98,6 +106,7 @@ class ManagementNodeServiceImplTest {
         RestClient.RequestBodySpec requestBodySpec = mock(RestClient.RequestBodySpec.class);
         RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
 
+        when(builder.buildRestClient()).thenReturn(restClient);
         when(restClient.post()).thenReturn(requestBodyUriSpec);
         when(requestBodyUriSpec.uri(baseUrl + ManagementNodeServiceImpl.SIGN_CSR_PATH))
                 .thenReturn(requestBodySpec);
@@ -117,6 +126,7 @@ class ManagementNodeServiceImplTest {
     void signCertificate_throwsExceptionOnFailure() {
         when(tokenCacheService.getToken()).thenReturn("token");
         when(restClient.post()).thenThrow(new RuntimeException("API error"));
+        when(builder.buildRestClient()).thenReturn(restClient);
 
         SignCertRequestDTO request = SignCertRequestDTO.builder().csr("csr-pem").build();
 

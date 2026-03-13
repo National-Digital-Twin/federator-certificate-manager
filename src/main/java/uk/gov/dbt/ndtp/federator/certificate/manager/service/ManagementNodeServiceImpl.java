@@ -35,8 +35,8 @@ public class ManagementNodeServiceImpl implements ManagementNodeService {
     public static final String SIGN_CSR_PATH = "/api/v1/certificate/csr/sign";
     public static final String BEARER_PREFIX = "Bearer ";
 
-    private final TokenCacheService tokenCacheService;
     private final MtlsHttpClientBuilder httpClientBuilder;
+    private final TokenCacheService tokenCacheService;
     private final String baseUrl;
 
     /**
@@ -67,7 +67,7 @@ public class ManagementNodeServiceImpl implements ManagementNodeService {
         String url = baseUrl + INTERMEDIATE_CERT_PATH;
 
         log.debug("Requesting intermediate certificate from {}", url);
-        RestClient restClient = buildRestClient();
+        RestClient restClient = httpClientBuilder.buildRestClient();
 
         try {
             return restClient
@@ -93,7 +93,7 @@ public class ManagementNodeServiceImpl implements ManagementNodeService {
         String url = baseUrl + SIGN_CSR_PATH;
 
         log.debug("Requesting certificate signing from {}", url);
-        RestClient restClient = buildRestClient();
+        RestClient restClient = httpClientBuilder.buildRestClient();
 
         try {
             return restClient
@@ -106,13 +106,5 @@ public class ManagementNodeServiceImpl implements ManagementNodeService {
         } catch (Exception e) {
             throw new ManagementNodeException("Failed to sign certificate", e);
         }
-    }
-
-    private RestClient buildRestClient() {
-        PoolingHttpClientConnectionManager connectionManager = httpClientBuilder.buildConnectionManager();
-        CloseableHttpClient httpClient = httpClientBuilder.buildHttpClient(connectionManager);
-        return RestClient.builder()
-                .requestFactory(new HttpComponentsClientHttpRequestFactory(httpClient))
-                .build();
     }
 }
