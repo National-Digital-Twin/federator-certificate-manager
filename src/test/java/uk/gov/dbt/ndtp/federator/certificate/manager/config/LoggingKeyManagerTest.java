@@ -10,22 +10,18 @@ import static org.junit.jupiter.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
+import ch.qos.logback.classic.Logger;
+import ch.qos.logback.classic.spi.ILoggingEvent;
+import ch.qos.logback.core.read.ListAppender;
 import java.net.Socket;
 import java.security.Principal;
 import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
 import java.util.List;
-
 import javax.net.ssl.X509ExtendedKeyManager;
 import javax.security.auth.x500.X500Principal;
-
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-
-import ch.qos.logback.classic.Logger;
-import ch.qos.logback.classic.spi.ILoggingEvent;
-import ch.qos.logback.core.read.ListAppender;
-
 import org.slf4j.LoggerFactory;
 
 class LoggingKeyManagerTest {
@@ -58,13 +54,11 @@ class LoggingKeyManagerTest {
         when(cert.getSubjectX500Principal()).thenReturn(new X500Principal("CN=test"));
         when(cert.getNotAfter()).thenReturn(new java.util.Date());
 
-        when(delegate.chooseClientAlias(any(), any(), any()))
-                .thenReturn(alias);
+        when(delegate.chooseClientAlias(any(), any(), any())).thenReturn(alias);
 
-        when(delegate.getCertificateChain(alias))
-                .thenReturn(new X509Certificate[]{cert});
+        when(delegate.getCertificateChain(alias)).thenReturn(new X509Certificate[] {cert});
 
-        String result = keyManager.chooseClientAlias(new String[]{"RSA"}, new Principal[0], new Socket());
+        String result = keyManager.chooseClientAlias(new String[] {"RSA"}, new Principal[0], new Socket());
 
         assertEquals(alias, result);
 
@@ -79,7 +73,7 @@ class LoggingKeyManagerTest {
 
         when(delegate.chooseClientAlias(any(), any(), any())).thenReturn(null);
 
-        String result = keyManager.chooseClientAlias(new String[]{"RSA"}, null, new Socket());
+        String result = keyManager.chooseClientAlias(new String[] {"RSA"}, null, new Socket());
 
         assertNull(result);
         assertTrue(logAppender.list.isEmpty());
@@ -90,13 +84,11 @@ class LoggingKeyManagerTest {
 
         String alias = "client-cert";
 
-        when(delegate.chooseClientAlias(any(), any(), any()))
-                .thenReturn(alias);
+        when(delegate.chooseClientAlias(any(), any(), any())).thenReturn(alias);
 
-        when(delegate.getCertificateChain(alias))
-                .thenReturn(new X509Certificate[0]);
+        when(delegate.getCertificateChain(alias)).thenReturn(new X509Certificate[0]);
 
-        keyManager.chooseClientAlias(new String[]{"RSA"}, null, new Socket());
+        keyManager.chooseClientAlias(new String[] {"RSA"}, null, new Socket());
 
         assertTrue(logAppender.list.isEmpty());
     }
@@ -116,10 +108,8 @@ class LoggingKeyManagerTest {
 
         X509Certificate cert = mock(X509Certificate.class);
 
-        when(delegate.getCertificateChain("alias"))
-                .thenReturn(new X509Certificate[]{cert});
+        when(delegate.getCertificateChain("alias")).thenReturn(new X509Certificate[] {cert});
 
         assertEquals(cert, keyManager.getCertificateChain("alias")[0]);
     }
-
 }
