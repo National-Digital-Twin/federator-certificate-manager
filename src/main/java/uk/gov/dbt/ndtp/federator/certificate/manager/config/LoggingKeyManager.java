@@ -14,6 +14,9 @@ import javax.net.ssl.X509ExtendedKeyManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+/**
+ * Provides a log when initiating TLS session of the alias and expiry of the selected certificate.
+ */
 public class LoggingKeyManager extends X509ExtendedKeyManager {
     private static final Logger log = LoggerFactory.getLogger(LoggingKeyManager.class);
 
