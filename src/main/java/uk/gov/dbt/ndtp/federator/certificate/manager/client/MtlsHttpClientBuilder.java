@@ -14,13 +14,13 @@ import java.util.Enumeration;
 import java.util.Map;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
-
 import javax.net.ssl.KeyManager;
 import javax.net.ssl.KeyManagerFactory;
 import javax.net.ssl.SSLContext;
 import javax.net.ssl.TrustManagerFactory;
 import javax.net.ssl.X509ExtendedKeyManager;
-
+import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.apache.hc.client5.http.config.ConnectionConfig;
 import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
@@ -35,9 +35,6 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
-
-import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import uk.gov.dbt.ndtp.federator.certificate.manager.config.CertificateProperties;
 import uk.gov.dbt.ndtp.federator.certificate.manager.config.LoggingKeyManager;
 import uk.gov.dbt.ndtp.federator.certificate.manager.exception.RestClientConfigurationException;
@@ -78,14 +75,14 @@ public class MtlsHttpClientBuilder {
         return buildConnectionManager(keyStorePassword, trustStorePassword);
     }
 
-
     /**
      * Builds a connection manager from a known keystore and truststore.
      * @param keyStorePassword credentials to access the keystore
      * @param trustStorePassword credentials to access the truststore
      * @return
      */
-    public PoolingHttpClientConnectionManager buildConnectionManager(String keyStorePassword, String trustStorePassword) {
+    public PoolingHttpClientConnectionManager buildConnectionManager(
+            String keyStorePassword, String trustStorePassword) {
         try {
             KeyStore keyStore = loadKeyStore(keyStorePath, keyStorePassword, keyStoreType);
             KeyStore trustStore = loadKeyStore(trustStorePath, trustStorePassword, keyStoreType);
@@ -99,19 +96,15 @@ public class MtlsHttpClientBuilder {
             }
             KeyManagerFactory kmf = KeyManagerFactory.getInstance(KeyManagerFactory.getDefaultAlgorithm());
             kmf.init(keyStore, keyStorePassword.toCharArray());
-            
+
             X509ExtendedKeyManager originalKeyManager = (X509ExtendedKeyManager) kmf.getKeyManagers()[0];
             KeyManager loggingKeyManager = new LoggingKeyManager(originalKeyManager);
-            
+
             TrustManagerFactory tmf = TrustManagerFactory.getInstance(TrustManagerFactory.getDefaultAlgorithm());
             tmf.init(trustStore);
-            
+
             SSLContext sslContext = SSLContext.getInstance("TLS");
-            sslContext.init(
-                     new KeyManager[]{loggingKeyManager},
-                     tmf.getTrustManagers(),
-                     null
-             );
+            sslContext.init(new KeyManager[] {loggingKeyManager}, tmf.getTrustManagers(), null);
 
             ConnectionConfig connectionConfig = ConnectionConfig.custom()
                     .setConnectTimeout(Timeout.of(10, TimeUnit.SECONDS))
@@ -146,7 +139,7 @@ public class MtlsHttpClientBuilder {
     }
 
     /**
-     * Builds an instance of {@link RestClient} with a new connection manager and http client. 
+     * Builds an instance of {@link RestClient} with a new connection manager and http client.
      * @return an instance of {@link RestClient}
      */
     public RestClient buildRestClient() {
@@ -166,7 +159,6 @@ public class MtlsHttpClientBuilder {
         if (vaultKeyStorePassword.isPresent()) return vaultKeyStorePassword.get();
 
         return keyStorePassword;
-
     }
 
     private String getTrustStorePassword() {
@@ -178,7 +170,7 @@ public class MtlsHttpClientBuilder {
 
         Optional<String> vaultTrustStorePassword = getSecretFromVault("truststore-password");
         if (vaultTrustStorePassword.isPresent()) return vaultTrustStorePassword.get();
-        
+
         return trustStorePassword;
     }
 

@@ -28,7 +28,6 @@ import org.bouncycastle.operator.jcajce.JcaContentSignerBuilder;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.io.TempDir;
-
 import uk.gov.dbt.ndtp.federator.certificate.manager.exception.KeyStoreCreationException;
 import uk.gov.dbt.ndtp.federator.certificate.manager.service.pki.cryptography.PemUtil;
 
@@ -135,7 +134,7 @@ class KeyStoreServiceTest {
     @Test
     void createTrustStore_withNullCaChain() throws Exception {
         String password = "trust-password";
-        Path trustStorePath = tempDir.resolve("truststore.p12");        
+        Path trustStorePath = tempDir.resolve("truststore.p12");
         byte[] tsBytes = keyStoreService.createTrustStore(null, password, trustStorePath);
 
         assertNotNull(tsBytes);

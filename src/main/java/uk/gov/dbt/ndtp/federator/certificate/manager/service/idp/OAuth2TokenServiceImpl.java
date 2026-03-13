@@ -8,7 +8,6 @@ package uk.gov.dbt.ndtp.federator.certificate.manager.service.idp;
 
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
-
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
@@ -16,7 +15,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
-
 import uk.gov.dbt.ndtp.federator.certificate.manager.client.MtlsHttpClientBuilder;
 import uk.gov.dbt.ndtp.federator.certificate.manager.exception.OAuth2TokenException;
 

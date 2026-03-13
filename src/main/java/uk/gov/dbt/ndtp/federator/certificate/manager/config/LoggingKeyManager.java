@@ -6,12 +6,11 @@
 
 package uk.gov.dbt.ndtp.federator.certificate.manager.config;
 
-import javax.net.ssl.X509ExtendedKeyManager;
 import java.net.Socket;
 import java.security.Principal;
 import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
-
+import javax.net.ssl.X509ExtendedKeyManager;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -39,8 +38,7 @@ public class LoggingKeyManager extends X509ExtendedKeyManager {
                         "TLS client certificate selected: alias={}, subject={}, expires={}",
                         alias,
                         cert.getSubjectX500Principal(),
-                        cert.getNotAfter()
-                );
+                        cert.getNotAfter());
             }
         }
 
@@ -75,5 +73,5 @@ public class LoggingKeyManager extends X509ExtendedKeyManager {
     @Override
     public String chooseServerAlias(String keyType, Principal[] issuers, Socket socket) {
         return delegate.chooseServerAlias(keyType, issuers, socket);
-    }    
+    }
 }

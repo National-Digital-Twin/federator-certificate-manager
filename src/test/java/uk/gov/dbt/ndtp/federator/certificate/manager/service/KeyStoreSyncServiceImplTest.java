@@ -23,8 +23,6 @@ import java.util.Date;
 import java.util.List;
 import java.util.Map;
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
-import org.apache.hc.core5.pool.PoolStats;
-import org.apache.hc.core5.util.TimeValue;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.cert.X509v3CertificateBuilder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
@@ -285,7 +283,8 @@ class KeyStoreSyncServiceImplTest {
         when(vaultSecretProvider.getKeyPair()).thenReturn(null);
         when(vaultSecretProvider.getCaChain()).thenReturn(List.of(caPem, caPem));
         Path trustStorePath = tempDir.resolve("truststore.p12");
-        byte[] newTruststoreBytes = realKeyStoreService.createTrustStore(List.of(caPem, caPem), "ts-pass", trustStorePath);
+        byte[] newTruststoreBytes =
+                realKeyStoreService.createTrustStore(List.of(caPem, caPem), "ts-pass", trustStorePath);
         when(keyStoreService.createTrustStore(any(), anyString(), any())).thenReturn(newTruststoreBytes);
 
         keyStoreSyncService.syncKeyStoresToFilesystem();
@@ -406,8 +405,8 @@ class KeyStoreSyncServiceImplTest {
     @Test
     void syncKeyStoresToFilesystem_propagatesFileSystemExceptionFromPasswordWrite() {
         FileSystemService mockFs = mock(FileSystemService.class);
-        KeyStoreSyncServiceImpl serviceWithMockFs = new KeyStoreSyncServiceImpl(
-                certificateProperties, vaultSecretProvider, keyStoreService, mockFs);
+        KeyStoreSyncServiceImpl serviceWithMockFs =
+                new KeyStoreSyncServiceImpl(certificateProperties, vaultSecretProvider, keyStoreService, mockFs);
 
         CreateKeyResponseDTO keyPair = CreateKeyResponseDTO.builder()
                 .publicKeyPem("pub")

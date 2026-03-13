@@ -19,7 +19,6 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.http.HttpHeaders;
 import org.springframework.web.client.RestClient;
-
 import uk.gov.dbt.ndtp.federator.certificate.manager.client.MtlsHttpClientBuilder;
 import uk.gov.dbt.ndtp.federator.certificate.manager.exception.ManagementNodeException;
 import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.CertificateResponseDTO;
@@ -53,7 +52,6 @@ class ManagementNodeServiceImplTest {
         String token = "test-token";
         CertificateResponseDTO expectedResponse =
                 CertificateResponseDTO.builder().certificate("cert-data").build();
-
 
         when(tokenCacheService.getToken()).thenReturn(token);
         when(builder.buildRestClient()).thenReturn(restClient);

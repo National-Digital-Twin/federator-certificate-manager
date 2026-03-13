@@ -21,7 +21,6 @@ import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
-
 import uk.gov.dbt.ndtp.federator.certificate.manager.client.MtlsHttpClientBuilder;
 import uk.gov.dbt.ndtp.federator.certificate.manager.exception.OAuth2TokenException;
 
@@ -47,7 +46,7 @@ class OAuth2TokenServiceImplTest {
                         .body(any(ParameterizedTypeReference.class)))
                 .thenReturn(payload);
 
-        OAuth2TokenServiceImpl service = new OAuth2TokenServiceImpl(builder, "https://example/token", "CLIENT");        
+        OAuth2TokenServiceImpl service = new OAuth2TokenServiceImpl(builder, "https://example/token", "CLIENT");
         TokenResponse response = service.getAccessToken();
 
         assertEquals("srv-token", response.getAccessToken());
@@ -59,7 +58,6 @@ class OAuth2TokenServiceImplTest {
         RestClient restClient = mock(RestClient.class, RETURNS_DEEP_STUBS);
         MtlsHttpClientBuilder builder = mock(MtlsHttpClientBuilder.class);
         when(builder.buildRestClient()).thenReturn(restClient);
-        
 
         when(restClient
                         .post()

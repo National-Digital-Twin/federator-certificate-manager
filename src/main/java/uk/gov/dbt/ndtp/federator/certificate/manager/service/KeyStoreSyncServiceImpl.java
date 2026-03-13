@@ -29,12 +29,9 @@ import java.util.Base64;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-
 import org.springframework.stereotype.Service;
-
 import uk.gov.dbt.ndtp.federator.certificate.manager.config.CertificateProperties;
 import uk.gov.dbt.ndtp.federator.certificate.manager.exception.FileSystemException;
 import uk.gov.dbt.ndtp.federator.certificate.manager.exception.KeyStoreCreationException;
@@ -275,5 +272,4 @@ public class KeyStoreSyncServiceImpl implements KeyStoreSyncService {
             throw new KeyStoreCreationException("Failed to validate generated truststore", e);
         }
     }
-
 }

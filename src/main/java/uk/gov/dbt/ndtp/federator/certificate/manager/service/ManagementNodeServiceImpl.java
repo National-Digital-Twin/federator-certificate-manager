@@ -7,15 +7,10 @@
 package uk.gov.dbt.ndtp.federator.certificate.manager.service;
 
 import lombok.extern.slf4j.Slf4j;
-
-import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
-import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
-
 import uk.gov.dbt.ndtp.federator.certificate.manager.client.MtlsHttpClientBuilder;
 import uk.gov.dbt.ndtp.federator.certificate.manager.exception.ManagementNodeException;
 import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.CertificateResponseDTO;
@@ -41,7 +36,7 @@ public class ManagementNodeServiceImpl implements ManagementNodeService {
 
     /**
      * Constructs the ManagementNodeServiceImpl.
-     *  
+     *
      * @param mtlsRestClient the mTLS-enabled RestClient
      * @param tokenCacheService the service providing cached OAuth2 tokens
      * @param baseUrl the base URL of the Management Node
