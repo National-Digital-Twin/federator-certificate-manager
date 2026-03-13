@@ -45,7 +45,7 @@ class LoggingKeyManagerTest {
     }
 
     @Test
-    void shouldLogCertificateDetailsWhenAliasSelected() throws Exception {
+    void shouldLogCertificateDetailsWhenAliasSelected() {
 
         String alias = "client-cert";
 

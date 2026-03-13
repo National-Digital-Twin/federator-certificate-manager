@@ -70,9 +70,9 @@ public class MtlsHttpClientBuilder {
      * Builds a connection manager from a known keystore and truststore.
      */
     public PoolingHttpClientConnectionManager buildConnectionManager() {
-        String keyStorePassword = getKeyStorePassword();
-        String trustStorePassword = getTrustStorePassword();
-        return buildConnectionManager(keyStorePassword, trustStorePassword);
+        String latestKeyStorePassword = getKeyStorePassword();
+        String latestTrustStorePassword = getTrustStorePassword();
+        return buildConnectionManager(latestKeyStorePassword, latestTrustStorePassword);
     }
 
     /**

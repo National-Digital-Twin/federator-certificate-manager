@@ -7,13 +7,18 @@
 package uk.gov.dbt.ndtp.federator.certificate.manager.client;
 
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.FileOutputStream;
 import java.nio.file.Files;
 import java.nio.file.Path;
 import java.security.KeyStore;
+import java.util.Map;
+
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
 import org.junit.jupiter.api.BeforeEach;
@@ -29,7 +34,7 @@ import uk.gov.dbt.ndtp.federator.certificate.manager.config.CertificatePropertie
 import uk.gov.dbt.ndtp.federator.certificate.manager.service.pki.VaultSecretProvider;
 
 @ExtendWith(MockitoExtension.class)
-public class MtlsHttpClientBuilderTest {
+class MtlsHttpClientBuilderTest {
 
     @InjectMocks
     MtlsHttpClientBuilder builder;
@@ -58,13 +63,27 @@ public class MtlsHttpClientBuilderTest {
     }
 
     @Test
-    void buildConnectionManager() {
+    void buildConnectionManager_withConfigPassword() {
         Destination mockConfig = mock(CertificateProperties.Destination.class);
         when(mockConfig.getKeystorePassword()).thenReturn(PASSWORD);
         when(certificateProperties.getDestination()).thenReturn(mockConfig);
         PoolingHttpClientConnectionManager connectionManager = builder.buildConnectionManager();
 
         assertNotNull(connectionManager);
+    }
+
+    @Test
+    void buildConnectionManager_withVaultPassword() {
+        Map<String, Object> secret = Map.of(PASSWORD, PASSWORD);
+        when(vaultSecretProvider.getSecret("keystore-password")).thenReturn(secret);
+        when(vaultSecretProvider.getSecret("truststore-password")).thenReturn(secret);
+        Destination mockConfig = mock(CertificateProperties.Destination.class);
+        when(certificateProperties.getDestination()).thenReturn(mockConfig);
+
+        PoolingHttpClientConnectionManager connectionManager = builder.buildConnectionManager();
+
+        assertNotNull(connectionManager);
+        verify(vaultSecretProvider, times(2)).getSecret(any());
     }
 
     @Test
