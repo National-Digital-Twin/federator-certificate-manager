@@ -14,6 +14,7 @@ import static org.mockito.Mockito.*;
 import java.util.Collections;
 import java.util.HashMap;
 import java.util.Map;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -29,9 +30,10 @@ class OAuth2TokenServiceImplTest {
 
     @Test
     void getAccessToken_returnsTokenResponse() {
-        RestClient restClient = mock(RestClient.class, RETURNS_DEEP_STUBS);
         MtlsHttpClientBuilder builder = mock(MtlsHttpClientBuilder.class);
-        when(builder.buildRestClient()).thenReturn(restClient);
+        CloseableHttpClient httpClient = mock(CloseableHttpClient.class);
+        RestClient restClient = mock(RestClient.class, RETURNS_DEEP_STUBS);
+        when(builder.buildHttpClient()).thenReturn(httpClient);
 
         Map<String, Object> payload = new HashMap<>();
         payload.put("access_token", "srv-token");
@@ -47,6 +49,9 @@ class OAuth2TokenServiceImplTest {
                 .thenReturn(payload);
 
         OAuth2TokenServiceImpl service = new OAuth2TokenServiceImpl(builder, "https://example/token", "CLIENT");
+        service = spy(service);
+        doReturn(restClient).when(service).buildRestClient(httpClient);
+
         TokenResponse response = service.getAccessToken();
 
         assertEquals("srv-token", response.getAccessToken());
@@ -55,9 +60,10 @@ class OAuth2TokenServiceImplTest {
 
     @Test
     void getAccessToken_throwsExceptionWhenAccessTokenMissing() {
-        RestClient restClient = mock(RestClient.class, RETURNS_DEEP_STUBS);
         MtlsHttpClientBuilder builder = mock(MtlsHttpClientBuilder.class);
-        when(builder.buildRestClient()).thenReturn(restClient);
+        CloseableHttpClient httpClient = mock(CloseableHttpClient.class);
+        RestClient restClient = mock(RestClient.class, RETURNS_DEEP_STUBS);
+        when(builder.buildHttpClient()).thenReturn(httpClient);
 
         when(restClient
                         .post()
@@ -69,15 +75,18 @@ class OAuth2TokenServiceImplTest {
                 .thenReturn(Collections.emptyMap());
 
         OAuth2TokenServiceImpl service = new OAuth2TokenServiceImpl(builder, "https://example/token", "CLIENT");
+        service = spy(service);
+        doReturn(restClient).when(service).buildRestClient(httpClient);
 
         assertThrows(OAuth2TokenException.class, service::getAccessToken);
     }
 
     @Test
     void getAccessToken_throwsExceptionWhenResponseIsNull() {
-        RestClient restClient = mock(RestClient.class, RETURNS_DEEP_STUBS);
         MtlsHttpClientBuilder builder = mock(MtlsHttpClientBuilder.class);
-        when(builder.buildRestClient()).thenReturn(restClient);
+        CloseableHttpClient httpClient = mock(CloseableHttpClient.class);
+        RestClient restClient = mock(RestClient.class, RETURNS_DEEP_STUBS);
+        when(builder.buildHttpClient()).thenReturn(httpClient);
 
         when(restClient
                         .post()
@@ -89,15 +98,18 @@ class OAuth2TokenServiceImplTest {
                 .thenReturn(null);
 
         OAuth2TokenServiceImpl service = new OAuth2TokenServiceImpl(builder, "https://example/token", "CLIENT");
+        service = spy(service);
+        doReturn(restClient).when(service).buildRestClient(httpClient);
 
         assertThrows(OAuth2TokenException.class, service::getAccessToken);
     }
 
     @Test
     void getAccessToken_throwsExceptionWhenRestClientFails() {
-        RestClient restClient = mock(RestClient.class, RETURNS_DEEP_STUBS);
         MtlsHttpClientBuilder builder = mock(MtlsHttpClientBuilder.class);
-        when(builder.buildRestClient()).thenReturn(restClient);
+        CloseableHttpClient httpClient = mock(CloseableHttpClient.class);
+        RestClient restClient = mock(RestClient.class, RETURNS_DEEP_STUBS);
+        when(builder.buildHttpClient()).thenReturn(httpClient);
 
         when(restClient
                         .post()
@@ -109,6 +121,8 @@ class OAuth2TokenServiceImplTest {
                 .thenThrow(new RuntimeException("Network error"));
 
         OAuth2TokenServiceImpl service = new OAuth2TokenServiceImpl(builder, "https://example/token", "CLIENT");
+        service = spy(service);
+        doReturn(restClient).when(service).buildRestClient(httpClient);
 
         assertThrows(OAuth2TokenException.class, service::getAccessToken);
     }

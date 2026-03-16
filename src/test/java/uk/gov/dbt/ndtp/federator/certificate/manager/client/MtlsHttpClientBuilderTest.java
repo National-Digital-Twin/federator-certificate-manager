@@ -19,7 +19,7 @@ import java.nio.file.Path;
 import java.security.KeyStore;
 import java.util.Map;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
-import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
+import org.apache.hc.client5.http.impl.io.BasicHttpClientConnectionManager;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -27,7 +27,6 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.test.util.ReflectionTestUtils;
-import org.springframework.web.client.RestClient;
 import uk.gov.dbt.ndtp.federator.certificate.manager.config.CertificateProperties;
 import uk.gov.dbt.ndtp.federator.certificate.manager.config.CertificateProperties.Destination;
 import uk.gov.dbt.ndtp.federator.certificate.manager.service.pki.VaultSecretProvider;
@@ -66,7 +65,7 @@ class MtlsHttpClientBuilderTest {
         Destination mockConfig = mock(CertificateProperties.Destination.class);
         when(mockConfig.getKeystorePassword()).thenReturn(PASSWORD);
         when(certificateProperties.getDestination()).thenReturn(mockConfig);
-        PoolingHttpClientConnectionManager connectionManager = builder.buildConnectionManager();
+        BasicHttpClientConnectionManager connectionManager = builder.buildConnectionManager();
 
         assertNotNull(connectionManager);
     }
@@ -79,7 +78,7 @@ class MtlsHttpClientBuilderTest {
         Destination mockConfig = mock(CertificateProperties.Destination.class);
         when(certificateProperties.getDestination()).thenReturn(mockConfig);
 
-        PoolingHttpClientConnectionManager connectionManager = builder.buildConnectionManager();
+        BasicHttpClientConnectionManager connectionManager = builder.buildConnectionManager();
 
         assertNotNull(connectionManager);
         verify(vaultSecretProvider, times(2)).getSecret(any());
@@ -87,27 +86,19 @@ class MtlsHttpClientBuilderTest {
 
     @Test
     void buildConnectionManager_WithPassword() {
-        PoolingHttpClientConnectionManager connectionManager = builder.buildConnectionManager(PASSWORD, PASSWORD);
+        BasicHttpClientConnectionManager connectionManager = builder.buildConnectionManager(PASSWORD, PASSWORD);
 
         assertNotNull(connectionManager);
     }
 
     @Test
     void buildHttpClient() {
-        PoolingHttpClientConnectionManager connectionManager = mock(PoolingHttpClientConnectionManager.class);
-        CloseableHttpClient httpClient = builder.buildHttpClient(connectionManager);
-
-        assertNotNull(httpClient);
-    }
-
-    @Test
-    void buildRestClient() {
         Destination mockConfig = mock(CertificateProperties.Destination.class);
         when(mockConfig.getKeystorePassword()).thenReturn(PASSWORD);
         when(certificateProperties.getDestination()).thenReturn(mockConfig);
-        RestClient restClient = builder.buildRestClient();
+        CloseableHttpClient httpClient = builder.buildHttpClient();
 
-        assertNotNull(restClient);
+        assertNotNull(httpClient);
     }
 
     private Path createTempKeyStore() throws Exception {

@@ -7,8 +7,10 @@
 package uk.gov.dbt.ndtp.federator.certificate.manager.service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import uk.gov.dbt.ndtp.federator.certificate.manager.client.MtlsHttpClientBuilder;
@@ -62,9 +64,9 @@ public class ManagementNodeServiceImpl implements ManagementNodeService {
         String url = baseUrl + INTERMEDIATE_CERT_PATH;
 
         log.debug("Requesting intermediate certificate from {}", url);
-        RestClient restClient = httpClientBuilder.buildRestClient();
 
-        try {
+        try (CloseableHttpClient httpClient = httpClientBuilder.buildHttpClient()) {
+            RestClient restClient = buildRestClient(httpClient);
             return restClient
                     .get()
                     .uri(url)
@@ -88,9 +90,9 @@ public class ManagementNodeServiceImpl implements ManagementNodeService {
         String url = baseUrl + SIGN_CSR_PATH;
 
         log.debug("Requesting certificate signing from {}", url);
-        RestClient restClient = httpClientBuilder.buildRestClient();
 
-        try {
+        try (CloseableHttpClient httpClient = httpClientBuilder.buildHttpClient()) {
+            RestClient restClient = buildRestClient(httpClient);
             return restClient
                     .post()
                     .uri(url)
@@ -101,5 +103,11 @@ public class ManagementNodeServiceImpl implements ManagementNodeService {
         } catch (Exception e) {
             throw new ManagementNodeException("Failed to sign certificate", e);
         }
+    }
+
+    protected RestClient buildRestClient(CloseableHttpClient httpClient) {
+        return RestClient.builder()
+                .requestFactory(new HttpComponentsClientHttpRequestFactory(httpClient))
+                .build();
     }
 }

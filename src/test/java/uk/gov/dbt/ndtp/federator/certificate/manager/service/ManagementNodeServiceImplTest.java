@@ -9,9 +9,12 @@ package uk.gov.dbt.ndtp.federator.certificate.manager.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.when;
 
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,9 +38,6 @@ class ManagementNodeServiceImplTest {
     @Mock
     private TokenCacheService tokenCacheService;
 
-    @Mock
-    private RestClient restClient;
-
     private ManagementNodeServiceImpl managementNodeService;
 
     private final String baseUrl = "https://localhost:8090";
@@ -52,15 +52,19 @@ class ManagementNodeServiceImplTest {
         String token = "test-token";
         CertificateResponseDTO expectedResponse =
                 CertificateResponseDTO.builder().certificate("cert-data").build();
-
         when(tokenCacheService.getToken()).thenReturn(token);
-        when(builder.buildRestClient()).thenReturn(restClient);
+
+        CloseableHttpClient httpClient = mock(CloseableHttpClient.class);
+        RestClient restClient = mock(RestClient.class);
+        when(builder.buildHttpClient()).thenReturn(httpClient);
+        managementNodeService = spy(managementNodeService);
+        doReturn(restClient).when(managementNodeService).buildRestClient(httpClient);
 
         RestClient.RequestHeadersUriSpec requestHeadersUriSpec = mock(RestClient.RequestHeadersUriSpec.class);
         RestClient.RequestHeadersSpec requestHeadersSpec = mock(RestClient.RequestHeadersSpec.class);
         RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
-
         when(restClient.get()).thenReturn(requestHeadersUriSpec);
+
         when(requestHeadersUriSpec.uri(baseUrl + ManagementNodeServiceImpl.INTERMEDIATE_CERT_PATH))
                 .thenReturn(requestHeadersSpec);
         when(requestHeadersSpec.header(HttpHeaders.AUTHORIZATION, ManagementNodeServiceImpl.BEARER_PREFIX + token))
@@ -76,8 +80,7 @@ class ManagementNodeServiceImplTest {
     @Test
     void getIntermediateCertificate_throwsExceptionOnFailure() {
         when(tokenCacheService.getToken()).thenReturn("token");
-        when(restClient.get()).thenThrow(new RuntimeException("API error"));
-        when(builder.buildRestClient()).thenReturn(restClient);
+        // when(builder.buildRestClient()).thenReturn(restClient);
 
         ManagementNodeException ex =
                 assertThrows(ManagementNodeException.class, () -> managementNodeService.getIntermediateCertificate());
@@ -94,18 +97,23 @@ class ManagementNodeServiceImplTest {
     @Test
     void signCertificate_returnsResponseOnSuccess() {
         String token = "test-token";
+        when(tokenCacheService.getToken()).thenReturn(token);
+
         SignCertRequestDTO request = SignCertRequestDTO.builder().csr("csr-pem").build();
         SignCertResponseDTO expectedResponse =
                 SignCertResponseDTO.builder().certificate("signed-cert").build();
 
-        when(tokenCacheService.getToken()).thenReturn(token);
+        CloseableHttpClient httpClient = mock(CloseableHttpClient.class);
+        RestClient restClient = mock(RestClient.class);
+        when(builder.buildHttpClient()).thenReturn(httpClient);
+        managementNodeService = spy(managementNodeService);
+        doReturn(restClient).when(managementNodeService).buildRestClient(httpClient);
 
         RestClient.RequestBodyUriSpec requestBodyUriSpec = mock(RestClient.RequestBodyUriSpec.class);
         RestClient.RequestBodySpec requestBodySpec = mock(RestClient.RequestBodySpec.class);
         RestClient.ResponseSpec responseSpec = mock(RestClient.ResponseSpec.class);
-
-        when(builder.buildRestClient()).thenReturn(restClient);
         when(restClient.post()).thenReturn(requestBodyUriSpec);
+
         when(requestBodyUriSpec.uri(baseUrl + ManagementNodeServiceImpl.SIGN_CSR_PATH))
                 .thenReturn(requestBodySpec);
         when(requestBodySpec.header(HttpHeaders.AUTHORIZATION, ManagementNodeServiceImpl.BEARER_PREFIX + token))
@@ -123,8 +131,6 @@ class ManagementNodeServiceImplTest {
     @Test
     void signCertificate_throwsExceptionOnFailure() {
         when(tokenCacheService.getToken()).thenReturn("token");
-        when(restClient.post()).thenThrow(new RuntimeException("API error"));
-        when(builder.buildRestClient()).thenReturn(restClient);
 
         SignCertRequestDTO request = SignCertRequestDTO.builder().csr("csr-pem").build();
 

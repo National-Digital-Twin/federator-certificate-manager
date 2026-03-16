@@ -25,16 +25,15 @@ import org.apache.hc.client5.http.config.ConnectionConfig;
 import org.apache.hc.client5.http.config.RequestConfig;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.apache.hc.client5.http.impl.classic.HttpClients;
-import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
-import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManagerBuilder;
-import org.apache.hc.client5.http.io.HttpClientConnectionManager;
+import org.apache.hc.client5.http.impl.io.BasicHttpClientConnectionManager;
 import org.apache.hc.client5.http.ssl.DefaultClientTlsStrategy;
+import org.apache.hc.client5.http.ssl.TlsSocketStrategy;
+import org.apache.hc.core5.http.config.Lookup;
+import org.apache.hc.core5.http.config.RegistryBuilder;
 import org.apache.hc.core5.util.TimeValue;
 import org.apache.hc.core5.util.Timeout;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
-import org.springframework.web.client.RestClient;
 import uk.gov.dbt.ndtp.federator.certificate.manager.config.CertificateProperties;
 import uk.gov.dbt.ndtp.federator.certificate.manager.config.LoggingKeyManager;
 import uk.gov.dbt.ndtp.federator.certificate.manager.exception.RestClientConfigurationException;
@@ -69,7 +68,7 @@ public class MtlsHttpClientBuilder {
     /**
      * Builds a connection manager from a known keystore and truststore.
      */
-    public PoolingHttpClientConnectionManager buildConnectionManager() {
+    public BasicHttpClientConnectionManager buildConnectionManager() {
         String latestKeyStorePassword = getKeyStorePassword();
         String latestTrustStorePassword = getTrustStorePassword();
         return buildConnectionManager(latestKeyStorePassword, latestTrustStorePassword);
@@ -81,8 +80,7 @@ public class MtlsHttpClientBuilder {
      * @param trustStorePassword credentials to access the truststore
      * @return
      */
-    public PoolingHttpClientConnectionManager buildConnectionManager(
-            String keyStorePassword, String trustStorePassword) {
+    public BasicHttpClientConnectionManager buildConnectionManager(String keyStorePassword, String trustStorePassword) {
         try {
             KeyStore keyStore = loadKeyStore(keyStorePath, keyStorePassword, keyStoreType);
             KeyStore trustStore = loadKeyStore(trustStorePath, trustStorePassword, keyStoreType);
@@ -105,6 +103,9 @@ public class MtlsHttpClientBuilder {
 
             SSLContext sslContext = SSLContext.getInstance("TLS");
             sslContext.init(new KeyManager[] {loggingKeyManager}, tmf.getTrustManagers(), null);
+            Lookup<TlsSocketStrategy> registry = RegistryBuilder.<TlsSocketStrategy>create()
+                    .register("https", new DefaultClientTlsStrategy(sslContext))
+                    .build();
 
             ConnectionConfig connectionConfig = ConnectionConfig.custom()
                     .setConnectTimeout(Timeout.of(10, TimeUnit.SECONDS))
@@ -112,10 +113,11 @@ public class MtlsHttpClientBuilder {
                     .setTimeToLive(TimeValue.ofHours(1))
                     .build();
 
-            return PoolingHttpClientConnectionManagerBuilder.create()
-                    .setTlsSocketStrategy(new DefaultClientTlsStrategy(sslContext))
-                    .setDefaultConnectionConfig(connectionConfig)
-                    .build();
+            BasicHttpClientConnectionManager connectionManager = BasicHttpClientConnectionManager.create(registry);
+
+            connectionManager.setConnectionConfig(connectionConfig);
+
+            return connectionManager;
         } catch (Exception e) {
             throw new RestClientConfigurationException("Failed to configure mTLS HttpClient", e);
         }
@@ -123,10 +125,10 @@ public class MtlsHttpClientBuilder {
 
     /**
      * Builds an HTTP client configured with connection manager.
-     * @param connectionManager an instance of {@link HttpClientConnectionManager}
      * @return an instance of {@link CloseableHttpClient}
      */
-    public CloseableHttpClient buildHttpClient(HttpClientConnectionManager connectionManager) {
+    public CloseableHttpClient buildHttpClient() {
+        BasicHttpClientConnectionManager connectionManager = buildConnectionManager();
         RequestConfig requestConfig = RequestConfig.custom()
                 .setResponseTimeout(Timeout.of(30, TimeUnit.SECONDS))
                 .build();
@@ -135,18 +137,6 @@ public class MtlsHttpClientBuilder {
                 .setConnectionManager(connectionManager)
                 .setDefaultRequestConfig(requestConfig)
                 .evictExpiredConnections()
-                .build();
-    }
-
-    /**
-     * Builds an instance of {@link RestClient} with a new connection manager and http client.
-     * @return an instance of {@link RestClient}
-     */
-    public RestClient buildRestClient() {
-        PoolingHttpClientConnectionManager connectionManager = buildConnectionManager();
-        CloseableHttpClient httpClient = buildHttpClient(connectionManager);
-        return RestClient.builder()
-                .requestFactory(new HttpComponentsClientHttpRequestFactory(httpClient))
                 .build();
     }
 
