@@ -85,13 +85,13 @@ jobs:
           severity: "CRITICAL,HIGH"
         continue-on-error: true
 
-      # - name: Tag Server Image with tag(s) ${{ inputs.image_tag }}
-      #   run: |
-      #     ./.github/actions/docker-tags.sh "ghcr.io/${REPO}/federator-certificate-manager" "${{ inputs.image_tag }}"
-      #     docker rmi ghcr.io/${REPO}/federator-certificate-manager:staged
+      - name: Tag Server Image with tag(s) ${{ inputs.image_tag }}
+        run: |
+          ./.github/actions/docker-tags.sh "ghcr.io/${REPO}/federator-certificate-manager" "${{ inputs.image_tag }}"
+          docker rmi ghcr.io/${REPO}/federator-certificate-manager:staged
 
-      # - name: Push Server Image
-      #   if: ${{ !inputs.dry_run }}
-      #   run: docker push --all-tags ghcr.io/${REPO}/federator-certificate-manager
+      - name: Push Server Image
+        if: ${{ !inputs.dry_run }}
+        run: docker push --all-tags ghcr.io/${REPO}/federator-certificate-manager
 
 

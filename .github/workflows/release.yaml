@@ -23,7 +23,7 @@ on:
   pull_request:
     # types: [closed]
     branches:
-      - develop
+      - main
   workflow_dispatch:
     # To eventually be replaced with just using the version from the pom
     inputs:
@@ -48,9 +48,9 @@ jobs:
       packages: write
       id-token: write
     runs-on: ubuntu-latest
-    # if: |
-    #   github.event.pull_request.merged == true &&
-    #   startsWith(github.head_ref, 'release/') || startsWith(github.head_ref, 'hotfix/'))
+    if: |
+      github.event.pull_request.merged == true &&
+      startsWith(github.head_ref, 'release/') || startsWith(github.head_ref, 'hotfix/'))
     outputs:
       project_version: ${{ steps.get-version.outputs.project_version }}
     steps:
@@ -98,10 +98,10 @@ jobs:
           distribution: "temurin"
           cache: maven
           server-password: "GH_PACKAGES_PAT"
-      # - name: Build packages
-      #   run: ./mvnw $MAVEN_CLI_OPTS package -DskipTests
-      # - name: Publish package
-      #   run: ./mvnw $MAVEN_CLI_OPTS package -DskipTests
+      - name: Build packages
+        run: ./mvnw $MAVEN_CLI_OPTS package -DskipTests
+      - name: Publish package
+        run: ./mvnw $MAVEN_CLI_OPTS package -DskipTests
 
   release-ghcr:
     permissions:
@@ -118,20 +118,20 @@ jobs:
       dry_run: false
       docker_target: federator-certificate-manager
 
-  # cleanup:
-  #   permissions:
-  #     contents: read
-  #     packages: write
-  #     id-token: write
+  cleanup:
+    permissions:
+      contents: read
+      packages: write
+      id-token: write
 
-  #   name: Artifact cleanup
-  #   runs-on: ubuntu-latest
-  #   needs:
-  #     - release-ghcr
-  #     - verify
-  #   if: ${{ needs.verify.result == 'success' }}
-  #   steps:
-  #     - uses: geekyeggo/delete-artifact@v5
-  #       name: Delete server artifact
-  #       with:
-  #         name: federator-certificate-manager-${{ needs.verify.outputs.project_version }}.jar
+    name: Artifact cleanup
+    runs-on: ubuntu-latest
+    needs:
+      - release-ghcr
+      - verify
+    if: ${{ needs.verify.result == 'success' }}
+    steps:
+      - uses: geekyeggo/delete-artifact@v5
+        name: Delete server artifact
+        with:
+          name: federator-certificate-manager-${{ needs.verify.outputs.project_version }}.jar
