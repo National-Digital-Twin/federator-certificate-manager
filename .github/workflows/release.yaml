@@ -21,7 +21,7 @@ env:
 
 on:
   pull_request:
-    types: [closed]
+    # types: [closed]
     branches:
       - develop
   workflow_dispatch:
