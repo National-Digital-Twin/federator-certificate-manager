@@ -80,7 +80,6 @@ class ManagementNodeServiceImplTest {
     @Test
     void getIntermediateCertificate_throwsExceptionOnFailure() {
         when(tokenCacheService.getToken()).thenReturn("token");
-        // when(builder.buildRestClient()).thenReturn(restClient);
 
         ManagementNodeException ex =
                 assertThrows(ManagementNodeException.class, () -> managementNodeService.getIntermediateCertificate());

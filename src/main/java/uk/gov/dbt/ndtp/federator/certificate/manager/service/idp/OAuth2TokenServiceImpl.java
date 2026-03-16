@@ -40,7 +40,7 @@ public class OAuth2TokenServiceImpl implements OAuth2TokenService {
     /**
      * Constructs the OAuth2TokenServiceImpl.
      *
-     * @param mtlsRestClient the mTLS-enabled RestClient
+     * @param httpClientBuilder a builder which can create instances of {@link CloseableHttpClient}
      * @param tokenUri the URI for requesting the token
      * @param clientId the OAuth2 client identifier
      */
@@ -95,6 +95,11 @@ public class OAuth2TokenServiceImpl implements OAuth2TokenService {
         }
     }
 
+    /**
+     * Creates an instance of {@link RestClient} from a {@link CloseableHttpClient}.
+     * @param httpClient an instance of {@link CloseableHttpClient}
+     * @return an instance of {@link RestClient}
+     */
     protected RestClient buildRestClient(CloseableHttpClient httpClient) {
         return RestClient.builder()
                 .requestFactory(new HttpComponentsClientHttpRequestFactory(httpClient))

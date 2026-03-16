@@ -39,9 +39,9 @@ public class ManagementNodeServiceImpl implements ManagementNodeService {
     /**
      * Constructs the ManagementNodeServiceImpl.
      *
-     * @param mtlsRestClient the mTLS-enabled RestClient
      * @param tokenCacheService the service providing cached OAuth2 tokens
      * @param baseUrl the base URL of the Management Node
+     * @param httpClientBuilder a builder which can create instances of {@link CloseableHttpClient}
      */
     public ManagementNodeServiceImpl(
             TokenCacheService tokenCacheService,
@@ -105,6 +105,11 @@ public class ManagementNodeServiceImpl implements ManagementNodeService {
         }
     }
 
+    /**
+     * Creates an instance of {@link RestClient} from a {@link CloseableHttpClient}.
+     * @param httpClient an instance of {@link CloseableHttpClient}
+     * @return an instance of {@link RestClient}
+     */
     protected RestClient buildRestClient(CloseableHttpClient httpClient) {
         return RestClient.builder()
                 .requestFactory(new HttpComponentsClientHttpRequestFactory(httpClient))

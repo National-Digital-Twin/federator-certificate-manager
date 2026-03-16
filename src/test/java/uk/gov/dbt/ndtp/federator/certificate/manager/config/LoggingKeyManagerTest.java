@@ -13,11 +13,15 @@ import static org.mockito.Mockito.*;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
+import uk.gov.dbt.ndtp.federator.certificate.manager.client.LoggingKeyManager;
+
 import java.net.Socket;
 import java.security.Principal;
 import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
 import java.util.List;
+
+import javax.net.ssl.SSLEngine;
 import javax.net.ssl.X509ExtendedKeyManager;
 import javax.security.auth.x500.X500Principal;
 import org.junit.jupiter.api.BeforeEach;
@@ -111,5 +115,63 @@ class LoggingKeyManagerTest {
         when(delegate.getCertificateChain("alias")).thenReturn(new X509Certificate[] {cert});
 
         assertEquals(cert, keyManager.getCertificateChain("alias")[0]);
+    }
+
+    @Test
+    void testGetClientAliases() {
+        String keyType = "RSA";
+        Principal[] issuers = new Principal[0];
+        String[] expected = new String[]{"alias1", "alias2"};
+
+        when(delegate.getClientAliases(keyType, issuers)).thenReturn(expected);
+
+        String[] result = keyManager.getClientAliases(keyType, issuers);
+
+        assertArrayEquals(expected, result);
+        verify(delegate).getClientAliases(keyType, issuers);
+    }
+
+    @Test
+    void testChooseEngineClientAlias() {
+        String[] keyTypes = {"RSA"};
+        Principal[] issuers = new Principal[0];
+        SSLEngine engine = mock(SSLEngine.class);
+        String expected = "alias";
+
+        when(delegate.chooseEngineClientAlias(keyTypes, issuers, engine)).thenReturn(expected);
+
+        String result = keyManager.chooseEngineClientAlias(keyTypes, issuers, engine);
+
+        assertEquals(expected, result);
+        verify(delegate).chooseEngineClientAlias(keyTypes, issuers, engine);
+    }
+
+    @Test
+    void testGetServerAliases() {
+        String keyType = "RSA";
+        Principal[] issuers = new Principal[0];
+        String[] expected = new String[]{"serverAlias"};
+
+        when(delegate.getServerAliases(keyType, issuers)).thenReturn(expected);
+
+        String[] result = keyManager.getServerAliases(keyType, issuers);
+
+        assertArrayEquals(expected, result);
+        verify(delegate).getServerAliases(keyType, issuers);
+    }
+
+    @Test
+    void testChooseServerAlias() {
+        String keyType = "RSA";
+        Principal[] issuers = new Principal[0];
+        Socket socket = mock(Socket.class);
+        String expected = "serverAlias";
+
+        when(delegate.chooseServerAlias(keyType, issuers, socket)).thenReturn(expected);
+
+        String result = keyManager.chooseServerAlias(keyType, issuers, socket);
+
+        assertEquals(expected, result);
+        verify(delegate).chooseServerAlias(keyType, issuers, socket);
     }
 }

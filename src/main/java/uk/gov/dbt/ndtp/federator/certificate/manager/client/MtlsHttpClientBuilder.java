@@ -35,7 +35,6 @@ import org.apache.hc.core5.util.Timeout;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Component;
 import uk.gov.dbt.ndtp.federator.certificate.manager.config.CertificateProperties;
-import uk.gov.dbt.ndtp.federator.certificate.manager.config.LoggingKeyManager;
 import uk.gov.dbt.ndtp.federator.certificate.manager.exception.RestClientConfigurationException;
 import uk.gov.dbt.ndtp.federator.certificate.manager.service.pki.VaultSecretProvider;
 

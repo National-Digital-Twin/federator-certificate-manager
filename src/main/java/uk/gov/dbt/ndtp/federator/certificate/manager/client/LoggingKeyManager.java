@@ -4,7 +4,7 @@
  * attributed to the Department for Business and Trade (UK) as the governing entity.
  */
 
-package uk.gov.dbt.ndtp.federator.certificate.manager.config;
+package uk.gov.dbt.ndtp.federator.certificate.manager.client;
 
 import java.net.Socket;
 import java.security.Principal;
