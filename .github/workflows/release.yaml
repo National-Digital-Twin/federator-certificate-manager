@@ -20,7 +20,10 @@ env:
   MAVEN_CLI_OPTS: "--batch-mode --no-transfer-progress"
 
 on:
-  # Hopefully this will eventually be replaced with the release event instead
+  pull_request:
+    types: [closed]
+    branches:
+      - main
   workflow_dispatch:
     # To eventually be replaced with just using the version from the pom
     inputs:
@@ -45,6 +48,9 @@ jobs:
       packages: write
       id-token: write
     runs-on: ubuntu-latest
+    if: |
+      github.event.pull_request.merged == true &&
+      startsWith(github.head_ref, 'release/') || startsWith(github.head_ref, 'hotfix/'))
     outputs:
       project_version: ${{ steps.get-version.outputs.project_version }}
     steps:
