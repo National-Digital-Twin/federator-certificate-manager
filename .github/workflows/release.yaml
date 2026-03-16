@@ -21,7 +21,7 @@ env:
 
 on:
   pull_request:
-    # types: [closed]
+    types: [closed]
     branches:
       - main
   workflow_dispatch:
@@ -50,7 +50,7 @@ jobs:
     runs-on: ubuntu-latest
     if: |
       github.event.pull_request.merged == true &&
-      startsWith(github.head_ref, 'release/') || startsWith(github.head_ref, 'hotfix/'))
+      (startsWith(github.head_ref, 'release/') || startsWith(github.head_ref, 'hotfix/'))
     outputs:
       project_version: ${{ steps.get-version.outputs.project_version }}
     steps:
