@@ -13,20 +13,18 @@ import static org.mockito.Mockito.*;
 import ch.qos.logback.classic.Logger;
 import ch.qos.logback.classic.spi.ILoggingEvent;
 import ch.qos.logback.core.read.ListAppender;
-import uk.gov.dbt.ndtp.federator.certificate.manager.client.LoggingKeyManager;
-
 import java.net.Socket;
 import java.security.Principal;
 import java.security.PrivateKey;
 import java.security.cert.X509Certificate;
 import java.util.List;
-
 import javax.net.ssl.SSLEngine;
 import javax.net.ssl.X509ExtendedKeyManager;
 import javax.security.auth.x500.X500Principal;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.slf4j.LoggerFactory;
+import uk.gov.dbt.ndtp.federator.certificate.manager.client.LoggingKeyManager;
 
 class LoggingKeyManagerTest {
 
@@ -121,7 +119,7 @@ class LoggingKeyManagerTest {
     void testGetClientAliases() {
         String keyType = "RSA";
         Principal[] issuers = new Principal[0];
-        String[] expected = new String[]{"alias1", "alias2"};
+        String[] expected = new String[] {"alias1", "alias2"};
 
         when(delegate.getClientAliases(keyType, issuers)).thenReturn(expected);
 
@@ -150,7 +148,7 @@ class LoggingKeyManagerTest {
     void testGetServerAliases() {
         String keyType = "RSA";
         Principal[] issuers = new Principal[0];
-        String[] expected = new String[]{"serverAlias"};
+        String[] expected = new String[] {"serverAlias"};
 
         when(delegate.getServerAliases(keyType, issuers)).thenReturn(expected);
 
