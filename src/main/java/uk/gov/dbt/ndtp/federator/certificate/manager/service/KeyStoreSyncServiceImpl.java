@@ -89,6 +89,7 @@ public class KeyStoreSyncServiceImpl implements KeyStoreSyncService {
                 validateKeyStore(keystoreBytes, keystorePassword, config.getKeystoreAlias());
                 fileSystemService.atomicWrite(keystorePath, keystoreBytes);
                 log.info("Keystore synchronized to {}", keystorePath);
+
             } else {
                 log.debug("Keystore at {} is already in sync with Vault. Skipping update.", keystorePath);
             }
@@ -103,7 +104,7 @@ public class KeyStoreSyncServiceImpl implements KeyStoreSyncService {
             boolean needsUpdate = shouldUpdateTrustStore(truststorePath, truststorePassword, caChain);
 
             if (needsUpdate) {
-                byte[] truststoreBytes = keyStoreService.createTrustStore(caChain, truststorePassword);
+                byte[] truststoreBytes = keyStoreService.createTrustStore(caChain, truststorePassword, truststorePath);
                 validateTrustStore(truststoreBytes, truststorePassword);
                 fileSystemService.atomicWrite(truststorePath, truststoreBytes);
                 log.info("Truststore synchronized to {}", truststorePath);

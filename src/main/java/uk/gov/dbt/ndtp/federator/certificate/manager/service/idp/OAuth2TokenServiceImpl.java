@@ -8,13 +8,16 @@ package uk.gov.dbt.ndtp.federator.certificate.manager.service.idp;
 
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.ParameterizedTypeReference;
 import org.springframework.http.MediaType;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.util.LinkedMultiValueMap;
 import org.springframework.util.MultiValueMap;
 import org.springframework.web.client.RestClient;
+import uk.gov.dbt.ndtp.federator.certificate.manager.client.MtlsHttpClientBuilder;
 import uk.gov.dbt.ndtp.federator.certificate.manager.exception.OAuth2TokenException;
 
 /**
@@ -30,22 +33,22 @@ public class OAuth2TokenServiceImpl implements OAuth2TokenService {
     public static final String ACCESS_TOKEN = "access_token";
     public static final String EXPIRES_IN = "expires_in";
 
-    private final RestClient restClient;
+    private final MtlsHttpClientBuilder httpClientBuilder;
     private final String tokenUri;
     private final String clientId;
 
     /**
      * Constructs the OAuth2TokenServiceImpl.
      *
-     * @param mtlsRestClient the mTLS-enabled RestClient
+     * @param httpClientBuilder a builder which can create instances of {@link CloseableHttpClient}
      * @param tokenUri the URI for requesting the token
      * @param clientId the OAuth2 client identifier
      */
     public OAuth2TokenServiceImpl(
-            RestClient mtlsRestClient,
+            MtlsHttpClientBuilder httpClientBuilder,
             @Value("${application.oauth2.token-uri}") String tokenUri,
             @Value("${application.oauth2.client-id}") String clientId) {
-        this.restClient = mtlsRestClient;
+        this.httpClientBuilder = httpClientBuilder;
         this.tokenUri = tokenUri;
         this.clientId = clientId;
     }
@@ -63,7 +66,8 @@ public class OAuth2TokenServiceImpl implements OAuth2TokenService {
         formData.add(GRANT_TYPE, CLIENT_CREDENTIALS);
         formData.add(CLIENT_ID, clientId);
 
-        try {
+        try (CloseableHttpClient httpClient = httpClientBuilder.buildHttpClient()) {
+            RestClient restClient = buildRestClient(httpClient);
             Map<String, Object> response = restClient
                     .post()
                     .uri(tokenUri)
@@ -89,5 +93,16 @@ public class OAuth2TokenServiceImpl implements OAuth2TokenService {
             log.error("Error retrieving OAuth2 token", e);
             throw new OAuth2TokenException("Error retrieving OAuth2 token", e);
         }
+    }
+
+    /**
+     * Creates an instance of {@link RestClient} from a {@link CloseableHttpClient}.
+     * @param httpClient an instance of {@link CloseableHttpClient}
+     * @return an instance of {@link RestClient}
+     */
+    protected RestClient buildRestClient(CloseableHttpClient httpClient) {
+        return RestClient.builder()
+                .requestFactory(new HttpComponentsClientHttpRequestFactory(httpClient))
+                .build();
     }
 }

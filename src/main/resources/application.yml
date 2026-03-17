@@ -48,6 +48,9 @@ application:
       # Filenames for PKCS12 keystore and truststore
       keystore-file: ${CERT_DEST_KEYSTORE_FILE:keystore.p12}
       truststore-file: ${CERT_DEST_TRUSTSTORE_FILE:truststore.p12}
+      # Passwords for PKCS12 keystore and truststore (if not set, resolved from Vault or auto-generated)
+      keystore-password: ${CERT_DEST_KEYSTORE_PASSWORD:}
+      truststore-password: ${CERT_DEST_TRUSTSTORE_PASSWORD:}
       # File names for generated passwords (will be stored in the same directory as the keystore/truststore)
       keystore-password-file: ${CERT_DEST_KEYSTORE_PASSWORD_FILE:keystore.password}
       truststore-password-file: ${CERT_DEST_TRUSTSTORE_PASSWORD_FILE:truststore.password}

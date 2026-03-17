@@ -13,3 +13,7 @@
 *.tmproj
 .vscode/
 /target/
+*application-local.yml
+
+# environment files
+.env

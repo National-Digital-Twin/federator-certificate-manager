@@ -239,7 +239,6 @@
           <excludes>
             <exclude>**/dto/**</exclude>
             <exclude>**/entity/**</exclude>
-            <exclude>**/config/**</exclude>
             <exclude>**/exception/**</exclude>
             <exclude>**/ManagementNodeApplication.java</exclude>
           </excludes>

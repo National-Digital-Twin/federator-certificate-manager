@@ -22,6 +22,7 @@ import java.util.Collections;
 import java.util.Date;
 import java.util.List;
 import java.util.Map;
+import org.apache.hc.client5.http.impl.io.PoolingHttpClientConnectionManager;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.cert.X509v3CertificateBuilder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
@@ -56,6 +57,9 @@ class KeyStoreSyncServiceImplTest {
 
     @Mock
     private KeyStoreService keyStoreService;
+
+    @Mock
+    private PoolingHttpClientConnectionManager connectionManager;
 
     private FileSystemServiceImpl realFileSystemService;
 
@@ -114,7 +118,8 @@ class KeyStoreSyncServiceImplTest {
         realKeyStoreService = new KeyStoreService();
         validKeystoreBytes =
                 realKeyStoreService.createKeyStore(privateKeyPem, certPem, List.of(caPem), "ks-pass", "federator");
-        validTruststoreBytes = realKeyStoreService.createTrustStore(List.of(caPem), "ts-pass");
+        Path trustStorePath = tempDir.resolve("truststore.p12");
+        validTruststoreBytes = realKeyStoreService.createTrustStore(List.of(caPem), "ts-pass", trustStorePath);
     }
 
     // --- syncKeyStoresToFilesystem ---
@@ -131,7 +136,7 @@ class KeyStoreSyncServiceImplTest {
         when(vaultSecretProvider.getCaChain()).thenReturn(List.of(caPem));
         when(keyStoreService.createKeyStore(anyString(), anyString(), any(), anyString(), anyString()))
                 .thenReturn(validKeystoreBytes);
-        when(keyStoreService.createTrustStore(any(), anyString())).thenReturn(validTruststoreBytes);
+        when(keyStoreService.createTrustStore(any(), anyString(), any())).thenReturn(validTruststoreBytes);
 
         keyStoreSyncService.syncKeyStoresToFilesystem();
 
@@ -160,7 +165,7 @@ class KeyStoreSyncServiceImplTest {
         keyStoreSyncService.syncKeyStoresToFilesystem();
 
         verify(keyStoreService, never()).createKeyStore(any(), any(), any(), any(), any());
-        verify(keyStoreService, never()).createTrustStore(any(), any());
+        verify(keyStoreService, never()).createTrustStore(any(), any(), any());
     }
 
     @Test
@@ -172,7 +177,7 @@ class KeyStoreSyncServiceImplTest {
         keyStoreSyncService.syncKeyStoresToFilesystem();
 
         verify(keyStoreService, never()).createKeyStore(any(), any(), any(), any(), any());
-        verify(keyStoreService, never()).createTrustStore(any(), any());
+        verify(keyStoreService, never()).createTrustStore(any(), any(), any());
     }
 
     @Test
@@ -190,7 +195,7 @@ class KeyStoreSyncServiceImplTest {
 
         keyStoreSyncService.syncKeyStoresToFilesystem();
 
-        verify(keyStoreService, never()).createTrustStore(any(), any());
+        verify(keyStoreService, never()).createTrustStore(any(), any(), any());
     }
 
     @Test
@@ -208,7 +213,7 @@ class KeyStoreSyncServiceImplTest {
 
         keyStoreSyncService.syncKeyStoresToFilesystem();
 
-        verify(keyStoreService, never()).createTrustStore(any(), any());
+        verify(keyStoreService, never()).createTrustStore(any(), any(), any());
     }
 
     @Test
@@ -225,7 +230,7 @@ class KeyStoreSyncServiceImplTest {
         when(vaultSecretProvider.getCaChain()).thenReturn(List.of(caPem));
         when(keyStoreService.createKeyStore(anyString(), anyString(), any(), anyString(), anyString()))
                 .thenReturn(validKeystoreBytes);
-        when(keyStoreService.createTrustStore(any(), anyString())).thenReturn(validTruststoreBytes);
+        when(keyStoreService.createTrustStore(any(), anyString(), any())).thenReturn(validTruststoreBytes);
 
         keyStoreSyncService.syncKeyStoresToFilesystem();
 
@@ -246,11 +251,11 @@ class KeyStoreSyncServiceImplTest {
         when(vaultSecretProvider.getCaChain()).thenReturn(List.of(caPem));
         when(keyStoreService.createKeyStore(anyString(), anyString(), any(), anyString(), anyString()))
                 .thenReturn(validKeystoreBytes);
-        when(keyStoreService.createTrustStore(any(), anyString())).thenReturn(validTruststoreBytes);
+        when(keyStoreService.createTrustStore(any(), anyString(), any())).thenReturn(validTruststoreBytes);
 
         keyStoreSyncService.syncKeyStoresToFilesystem();
 
-        verify(keyStoreService).createTrustStore(any(), anyString());
+        verify(keyStoreService).createTrustStore(any(), anyString(), any());
     }
 
     @Test
@@ -261,12 +266,12 @@ class KeyStoreSyncServiceImplTest {
         when(vaultSecretProvider.getCertificate()).thenReturn(certPem);
         when(vaultSecretProvider.getKeyPair()).thenReturn(keyPair);
         when(vaultSecretProvider.getCaChain()).thenReturn(List.of(caPem));
-        when(keyStoreService.createTrustStore(any(), anyString())).thenReturn(validTruststoreBytes);
+        when(keyStoreService.createTrustStore(any(), anyString(), any())).thenReturn(validTruststoreBytes);
 
         keyStoreSyncService.syncKeyStoresToFilesystem();
 
         verify(keyStoreService, never()).createKeyStore(any(), any(), any(), any(), any());
-        verify(keyStoreService).createTrustStore(any(), anyString());
+        verify(keyStoreService).createTrustStore(any(), anyString(), any());
     }
 
     @Test
@@ -277,12 +282,14 @@ class KeyStoreSyncServiceImplTest {
         when(vaultSecretProvider.getCertificate()).thenReturn(null);
         when(vaultSecretProvider.getKeyPair()).thenReturn(null);
         when(vaultSecretProvider.getCaChain()).thenReturn(List.of(caPem, caPem));
-        byte[] newTruststoreBytes = realKeyStoreService.createTrustStore(List.of(caPem, caPem), "ts-pass");
-        when(keyStoreService.createTrustStore(any(), anyString())).thenReturn(newTruststoreBytes);
+        Path trustStorePath = tempDir.resolve("truststore.p12");
+        byte[] newTruststoreBytes =
+                realKeyStoreService.createTrustStore(List.of(caPem, caPem), "ts-pass", trustStorePath);
+        when(keyStoreService.createTrustStore(any(), anyString(), any())).thenReturn(newTruststoreBytes);
 
         keyStoreSyncService.syncKeyStoresToFilesystem();
 
-        verify(keyStoreService).createTrustStore(any(), anyString());
+        verify(keyStoreService).createTrustStore(any(), anyString(), any());
     }
 
     @Test
@@ -300,7 +307,7 @@ class KeyStoreSyncServiceImplTest {
         when(vaultSecretProvider.getCaChain()).thenReturn(List.of(caPem));
         when(keyStoreService.createKeyStore(anyString(), anyString(), any(), anyString(), anyString()))
                 .thenReturn(validKeystoreBytes);
-        when(keyStoreService.createTrustStore(any(), anyString())).thenReturn(validTruststoreBytes);
+        when(keyStoreService.createTrustStore(any(), anyString(), any())).thenReturn(validTruststoreBytes);
 
         keyStoreSyncService.syncKeyStoresToFilesystem();
 
@@ -383,7 +390,7 @@ class KeyStoreSyncServiceImplTest {
         when(vaultSecretProvider.getCertificate()).thenReturn(null);
         when(vaultSecretProvider.getKeyPair()).thenReturn(null);
         when(vaultSecretProvider.getCaChain()).thenReturn(List.of(caPem));
-        when(keyStoreService.createTrustStore(any(), anyString())).thenReturn(new byte[] {0x00, 0x01, 0x02});
+        when(keyStoreService.createTrustStore(any(), anyString(), any())).thenReturn(new byte[] {0x00, 0x01, 0x02});
 
         KeyStoreCreationException ex = assertThrows(KeyStoreCreationException.class, () -> {
             keyStoreSyncService.syncKeyStoresToFilesystem();
@@ -445,7 +452,7 @@ class KeyStoreSyncServiceImplTest {
         when(vaultSecretProvider.getCaChain()).thenReturn(List.of(caPem));
         when(keyStoreService.createKeyStore(anyString(), anyString(), any(), anyString(), anyString()))
                 .thenReturn(validKeystoreBytes);
-        when(keyStoreService.createTrustStore(any(), anyString())).thenReturn(validTruststoreBytes);
+        when(keyStoreService.createTrustStore(any(), anyString(), any())).thenReturn(validTruststoreBytes);
 
         keyStoreSyncService.syncKeyStoresToFilesystem();
 
@@ -469,7 +476,7 @@ class KeyStoreSyncServiceImplTest {
         when(vaultSecretProvider.getCaChain()).thenReturn(List.of(caPem));
         when(keyStoreService.createKeyStore(anyString(), anyString(), any(), anyString(), anyString()))
                 .thenReturn(validKeystoreBytes);
-        when(keyStoreService.createTrustStore(any(), anyString())).thenReturn(validTruststoreBytes);
+        when(keyStoreService.createTrustStore(any(), anyString(), any())).thenReturn(validTruststoreBytes);
 
         keyStoreSyncService.syncKeyStoresToFilesystem();
 
@@ -498,17 +505,18 @@ class KeyStoreSyncServiceImplTest {
         String differentCaPem = PemUtil.toPem("CERTIFICATE", differentCaCert.getEncoded());
 
         // Write truststore with the different CA
-        byte[] existingTs = realKeyStoreService.createTrustStore(List.of(differentCaPem), "ts-pass");
+        Path trustStorePath = tempDir.resolve("truststore.p12");
+        byte[] existingTs = realKeyStoreService.createTrustStore(List.of(differentCaPem), "ts-pass", trustStorePath);
         Files.write(tempDir.resolve("truststore.p12"), existingTs);
 
         when(vaultSecretProvider.getCertificate()).thenReturn(null);
         when(vaultSecretProvider.getKeyPair()).thenReturn(null);
         when(vaultSecretProvider.getCaChain()).thenReturn(List.of(caPem));
-        when(keyStoreService.createTrustStore(any(), anyString())).thenReturn(validTruststoreBytes);
+        when(keyStoreService.createTrustStore(any(), anyString(), any())).thenReturn(validTruststoreBytes);
 
         keyStoreSyncService.syncKeyStoresToFilesystem();
 
-        verify(keyStoreService).createTrustStore(any(), anyString());
+        verify(keyStoreService).createTrustStore(any(), anyString(), any());
     }
 
     @Test
@@ -525,11 +533,11 @@ class KeyStoreSyncServiceImplTest {
         when(vaultSecretProvider.getCertificate()).thenReturn(null);
         when(vaultSecretProvider.getKeyPair()).thenReturn(null);
         when(vaultSecretProvider.getCaChain()).thenReturn(List.of(caPem));
-        when(keyStoreService.createTrustStore(any(), anyString())).thenReturn(validTruststoreBytes);
+        when(keyStoreService.createTrustStore(any(), anyString(), any())).thenReturn(validTruststoreBytes);
 
         keyStoreSyncService.syncKeyStoresToFilesystem();
 
-        verify(keyStoreService).createTrustStore(any(), anyString());
+        verify(keyStoreService).createTrustStore(any(), anyString(), any());
     }
 
     // --- resolvePassword ---
@@ -589,7 +597,7 @@ class KeyStoreSyncServiceImplTest {
         when(vaultSecretProvider.getCaChain()).thenReturn(List.of(caPem));
         when(keyStoreService.createKeyStore(anyString(), anyString(), any(), anyString(), anyString()))
                 .thenReturn(validKeystoreBytes);
-        when(keyStoreService.createTrustStore(any(), anyString())).thenReturn(validTruststoreBytes);
+        when(keyStoreService.createTrustStore(any(), anyString(), any())).thenReturn(validTruststoreBytes);
 
         assertDoesNotThrow(() -> keyStoreSyncService.syncKeyStoresToFilesystem());
     }
@@ -616,10 +624,11 @@ class KeyStoreSyncServiceImplTest {
 
         byte[] ksBytes = realKeyStoreService.createKeyStore(
                 privateKeyPem, certPem, List.of(caPem), "vault-ks-pass", "federator");
-        byte[] tsBytes = realKeyStoreService.createTrustStore(List.of(caPem), "vault-ts-pass");
+        Path trustStorePath = tempDir.resolve("truststore.p12");
+        byte[] tsBytes = realKeyStoreService.createTrustStore(List.of(caPem), "vault-ts-pass", trustStorePath);
         when(keyStoreService.createKeyStore(anyString(), anyString(), any(), anyString(), anyString()))
                 .thenReturn(ksBytes);
-        when(keyStoreService.createTrustStore(any(), anyString())).thenReturn(tsBytes);
+        when(keyStoreService.createTrustStore(any(), anyString(), any())).thenReturn(tsBytes);
 
         keyStoreSyncService.syncKeyStoresToFilesystem();
 

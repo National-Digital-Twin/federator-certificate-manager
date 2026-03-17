@@ -7,10 +7,13 @@
 package uk.gov.dbt.ndtp.federator.certificate.manager.service;
 
 import lombok.extern.slf4j.Slf4j;
+import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
+import org.springframework.http.client.HttpComponentsClientHttpRequestFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
+import uk.gov.dbt.ndtp.federator.certificate.manager.client.MtlsHttpClientBuilder;
 import uk.gov.dbt.ndtp.federator.certificate.manager.exception.ManagementNodeException;
 import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.CertificateResponseDTO;
 import uk.gov.dbt.ndtp.federator.certificate.manager.model.dto.SignCertRequestDTO;
@@ -29,24 +32,24 @@ public class ManagementNodeServiceImpl implements ManagementNodeService {
     public static final String SIGN_CSR_PATH = "/api/v1/certificate/csr/sign";
     public static final String BEARER_PREFIX = "Bearer ";
 
-    private final RestClient restClient;
+    private final MtlsHttpClientBuilder httpClientBuilder;
     private final TokenCacheService tokenCacheService;
     private final String baseUrl;
 
     /**
      * Constructs the ManagementNodeServiceImpl.
      *
-     * @param mtlsRestClient the mTLS-enabled RestClient
      * @param tokenCacheService the service providing cached OAuth2 tokens
      * @param baseUrl the base URL of the Management Node
+     * @param httpClientBuilder a builder which can create instances of {@link CloseableHttpClient}
      */
     public ManagementNodeServiceImpl(
-            RestClient mtlsRestClient,
             TokenCacheService tokenCacheService,
-            @Value("${application.management-node.base-url}") String baseUrl) {
-        this.restClient = mtlsRestClient;
+            @Value("${application.management-node.base-url}") String baseUrl,
+            MtlsHttpClientBuilder httpClientBuilder) {
         this.tokenCacheService = tokenCacheService;
         this.baseUrl = baseUrl;
+        this.httpClientBuilder = httpClientBuilder;
     }
 
     /**
@@ -62,7 +65,8 @@ public class ManagementNodeServiceImpl implements ManagementNodeService {
 
         log.debug("Requesting intermediate certificate from {}", url);
 
-        try {
+        try (CloseableHttpClient httpClient = httpClientBuilder.buildHttpClient()) {
+            RestClient restClient = buildRestClient(httpClient);
             return restClient
                     .get()
                     .uri(url)
@@ -87,7 +91,8 @@ public class ManagementNodeServiceImpl implements ManagementNodeService {
 
         log.debug("Requesting certificate signing from {}", url);
 
-        try {
+        try (CloseableHttpClient httpClient = httpClientBuilder.buildHttpClient()) {
+            RestClient restClient = buildRestClient(httpClient);
             return restClient
                     .post()
                     .uri(url)
@@ -98,5 +103,16 @@ public class ManagementNodeServiceImpl implements ManagementNodeService {
         } catch (Exception e) {
             throw new ManagementNodeException("Failed to sign certificate", e);
         }
+    }
+
+    /**
+     * Creates an instance of {@link RestClient} from a {@link CloseableHttpClient}.
+     * @param httpClient an instance of {@link CloseableHttpClient}
+     * @return an instance of {@link RestClient}
+     */
+    protected RestClient buildRestClient(CloseableHttpClient httpClient) {
+        return RestClient.builder()
+                .requestFactory(new HttpComponentsClientHttpRequestFactory(httpClient))
+                .build();
     }
 }
