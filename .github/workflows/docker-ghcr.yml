@@ -75,6 +75,16 @@ jobs:
       - name: Build Server Image
         run: docker build --no-cache --build-arg JAR_NAME="federator-certificate-manager-${{ inputs.jar_version }}" -t ghcr.io/${REPO}/federator-certificate-manager:staged -f "${{ github.workspace }}/docker/Dockerfile" --target ${{ inputs.docker_target }} .
 
+      - name: Run Trivy Scan on Server Docker Image
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
+        with:
+          image-ref: "ghcr.io/${{ env.REPO }}/federator-certificate-manager:staged"
+          format: "table"
+          exit-code: "1"
+          ignore-unfixed: true
+          severity: "CRITICAL,HIGH"
+        continue-on-error: true
+
       - name: Tag Server Image with tag(s) ${{ inputs.image_tag }}
         run: |
           ./.github/actions/docker-tags.sh "ghcr.io/${REPO}/federator-certificate-manager" "${{ inputs.image_tag }}"
