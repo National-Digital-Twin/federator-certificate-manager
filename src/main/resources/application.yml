@@ -40,6 +40,8 @@ application:
       common-name: ${CERT_SUBJECT_CN:api.acme-digital.co.uk}
       # Alternative Names (DNS), comma-separated
       alt-names: ${CERT_SUBJECT_ALT_NAMES:api.acme-digital.co.uk,api.internal.acme-digital.co.uk}
+    # Bootstrap detection: OID marker in certificate SANs
+    bootstrap-oid: ${BOOTSTRAP_OID:1.3.6.1.4.1.32473.1.1}
     intermediate:
       min-valid-days: ${CERT_INTERMEDIATE_MIN_VALID_DAYS:14}
     destination:

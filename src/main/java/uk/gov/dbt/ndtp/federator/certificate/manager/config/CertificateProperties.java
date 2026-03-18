@@ -37,6 +37,11 @@ public class CertificateProperties {
     private Integer keySize = 2048;
 
     /**
+     * The OID used to identify bootstrap certificates via an otherName SAN entry.
+     */
+    private String bootstrapOid = "1.3.6.1.4.1.32473.1.1";
+
+    /**
      * The subject details for the certificate.
      */
     private Subject subject = new Subject();
