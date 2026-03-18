@@ -51,6 +51,9 @@ public class CertificateManagerServiceImpl implements CertificateManagerService 
         if (currentCert == null || currentCert.isBlank()) {
             log.info("No certificate found in Vault. Initiating renewal...");
             renewCertificate();
+        } else if (isBootstrapCertificate(currentCert)) {
+            log.info("Bootstrap certificate detected. Initiating immediate renewal...");
+            renewCertificate();
         } else {
             long daysLeft = PemUtil.daysUntilExpiry(currentCert);
             String expiryDateStr = getExpiryDateString(currentCert);
@@ -116,6 +119,19 @@ public class CertificateManagerServiceImpl implements CertificateManagerService 
         } else {
             log.info("Intermediate CA in Vault is valid for at least {} days. No action required.", minValidDays);
         }
+    }
+
+    /**
+     * Determines whether the given certificate is a bootstrap certificate by checking for
+     * a custom OID in the Subject Alternative Name.
+     */
+    boolean isBootstrapCertificate(String certPem) {
+        String bootstrapOid = certificateProperties.getBootstrapOid();
+        if (bootstrapOid != null && !bootstrapOid.isBlank() && PemUtil.hasOtherNameSan(certPem, bootstrapOid)) {
+            log.debug("Certificate contains bootstrap OID marker: {}", bootstrapOid);
+            return true;
+        }
+        return false;
     }
 
     /**

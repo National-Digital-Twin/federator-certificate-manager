@@ -18,7 +18,13 @@ import java.security.cert.X509Certificate;
 import java.security.spec.PKCS8EncodedKeySpec;
 import java.security.spec.X509EncodedKeySpec;
 import java.util.Date;
+import org.bouncycastle.asn1.ASN1ObjectIdentifier;
+import org.bouncycastle.asn1.DERTaggedObject;
+import org.bouncycastle.asn1.DERUTF8String;
 import org.bouncycastle.asn1.x500.X500Name;
+import org.bouncycastle.asn1.x509.Extension;
+import org.bouncycastle.asn1.x509.GeneralName;
+import org.bouncycastle.asn1.x509.GeneralNames;
 import org.bouncycastle.cert.X509v3CertificateBuilder;
 import org.bouncycastle.cert.jcajce.JcaX509CertificateConverter;
 import org.bouncycastle.cert.jcajce.JcaX509v3CertificateBuilder;
@@ -269,5 +275,92 @@ class PemUtilTest {
     @Test
     void isValidityBelowThreshold_returnsTrueForInvalidPem() {
         assertTrue(PemUtil.isValidityBelowThreshold("invalid-pem", 10.0));
+    }
+
+    @Test
+    void hasOtherNameSan_returnsTrueWhenOidPresent() throws Exception {
+        String oid = "1.3.6.1.4.1.32473.1.1";
+        String pem = createCertWithOtherNameSan(oid, "bootstrap");
+        assertTrue(PemUtil.hasOtherNameSan(pem, oid));
+    }
+
+    @Test
+    void hasOtherNameSan_returnsFalseWhenDifferentOid() throws Exception {
+        String pem = createCertWithOtherNameSan("1.3.6.1.4.1.32473.1.1", "bootstrap");
+        assertFalse(PemUtil.hasOtherNameSan(pem, "1.3.6.1.4.1.99999.1.1"));
+    }
+
+    @Test
+    void hasOtherNameSan_returnsFalseWhenNoSans() throws Exception {
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+        kpg.initialize(2048);
+        KeyPair kp = kpg.generateKeyPair();
+        X509Certificate cert =
+                createCert(new X500Name("CN=NoSans"), new X500Name("CN=CA"), kp.getPublic(), kp.getPrivate());
+        String pem = PemUtil.toPem("CERTIFICATE", cert.getEncoded());
+        assertFalse(PemUtil.hasOtherNameSan(pem, "1.3.6.1.4.1.32473.1.1"));
+    }
+
+    @Test
+    void hasOtherNameSan_returnsTrueWhenMultipleOidsPresent() throws Exception {
+        String targetOid = "1.3.6.1.4.1.32473.1.1";
+        String otherOid = "1.3.6.1.4.1.32473.2.1";
+        String pem = createCertWithMultipleOtherNameSans(otherOid, "something", targetOid, "bootstrap");
+        assertTrue(PemUtil.hasOtherNameSan(pem, targetOid));
+    }
+
+    @Test
+    void hasOtherNameSan_returnsFalseForInvalidPem() {
+        assertFalse(PemUtil.hasOtherNameSan("not-a-cert", "1.3.6.1.4.1.32473.1.1"));
+    }
+
+    private String createCertWithOtherNameSan(String oid, String value) throws Exception {
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+        kpg.initialize(2048);
+        KeyPair kp = kpg.generateKeyPair();
+        X500Name name = new X500Name("CN=Test");
+        long now = System.currentTimeMillis();
+        ContentSigner signer = new JcaContentSignerBuilder("SHA256withRSA").build(kp.getPrivate());
+
+        org.bouncycastle.asn1.DERSequence otherNameSeq =
+                new org.bouncycastle.asn1.DERSequence(new org.bouncycastle.asn1.ASN1Encodable[] {
+                    new ASN1ObjectIdentifier(oid), new DERTaggedObject(true, 0, new DERUTF8String(value))
+                });
+        GeneralName otherName = new GeneralName(GeneralName.otherName, otherNameSeq);
+        GeneralNames sans = new GeneralNames(otherName);
+
+        X509v3CertificateBuilder builder = new JcaX509v3CertificateBuilder(
+                name, BigInteger.valueOf(now), new Date(now), new Date(now + 100000), name, kp.getPublic());
+        builder.addExtension(Extension.subjectAlternativeName, false, sans);
+
+        X509Certificate cert = new JcaX509CertificateConverter().getCertificate(builder.build(signer));
+        return PemUtil.toPem("CERTIFICATE", cert.getEncoded());
+    }
+
+    private String createCertWithMultipleOtherNameSans(String oid1, String value1, String oid2, String value2)
+            throws Exception {
+        KeyPairGenerator kpg = KeyPairGenerator.getInstance("RSA");
+        kpg.initialize(2048);
+        KeyPair kp = kpg.generateKeyPair();
+        X500Name name = new X500Name("CN=Test");
+        long now = System.currentTimeMillis();
+        ContentSigner signer = new JcaContentSignerBuilder("SHA256withRSA").build(kp.getPrivate());
+
+        GeneralName san1 = new GeneralName(
+                GeneralName.otherName, new org.bouncycastle.asn1.DERSequence(new org.bouncycastle.asn1.ASN1Encodable[] {
+                    new ASN1ObjectIdentifier(oid1), new DERTaggedObject(true, 0, new DERUTF8String(value1))
+                }));
+        GeneralName san2 = new GeneralName(
+                GeneralName.otherName, new org.bouncycastle.asn1.DERSequence(new org.bouncycastle.asn1.ASN1Encodable[] {
+                    new ASN1ObjectIdentifier(oid2), new DERTaggedObject(true, 0, new DERUTF8String(value2))
+                }));
+        GeneralNames sans = new GeneralNames(new GeneralName[] {san1, san2});
+
+        X509v3CertificateBuilder builder = new JcaX509v3CertificateBuilder(
+                name, BigInteger.valueOf(now), new Date(now), new Date(now + 100000), name, kp.getPublic());
+        builder.addExtension(Extension.subjectAlternativeName, false, sans);
+
+        X509Certificate cert = new JcaX509CertificateConverter().getCertificate(builder.build(signer));
+        return PemUtil.toPem("CERTIFICATE", cert.getEncoded());
     }
 }

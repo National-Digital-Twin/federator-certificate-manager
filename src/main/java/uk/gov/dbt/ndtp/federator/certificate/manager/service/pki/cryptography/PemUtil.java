@@ -17,7 +17,12 @@ import java.security.spec.X509EncodedKeySpec;
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
 import java.util.Base64;
+import java.util.Collection;
+import java.util.List;
 import lombok.extern.slf4j.Slf4j;
+import org.bouncycastle.asn1.ASN1InputStream;
+import org.bouncycastle.asn1.ASN1ObjectIdentifier;
+import org.bouncycastle.asn1.ASN1Sequence;
 import uk.gov.dbt.ndtp.federator.certificate.manager.exception.PkiException;
 
 @Slf4j
@@ -28,6 +33,7 @@ public final class PemUtil {
     }
 
     private static final String KEY_ALG = "RSA";
+    private static final int SAN_TYPE_OTHER_NAME = 0;
 
     /**
      * Parses a PKCS#8 encoded private key from a PEM string.
@@ -188,6 +194,48 @@ public final class PemUtil {
             log.warn("Failed to check validity threshold: {}", e.getMessage());
             return true; // If unparseable, assume it needs renewal
         }
+    }
+
+    /**
+     * Checks whether the certificate contains an otherName SAN entry with the specified OID.
+     *
+     * @param certPem the certificate in PEM format
+     * @param oid the OID to look for (e.g., "1.3.6.1.4.1.32473.1.1")
+     * @return true if the certificate has an otherName SAN matching the OID
+     */
+    public static boolean hasOtherNameSan(String certPem, String oid) {
+        try {
+            X509Certificate cert = parseCertificate(certPem);
+            Collection<List<?>> sans = cert.getSubjectAlternativeNames();
+            if (sans == null) {
+                return false;
+            }
+            for (List<?> san : sans) {
+                if (san.size() >= 2 && Integer.valueOf(SAN_TYPE_OTHER_NAME).equals(san.get(0))) {
+                    byte[] derBytes = (byte[]) san.get(1);
+                    if (otherNameMatchesOid(derBytes, oid)) {
+                        return true;
+                    }
+                }
+            }
+            return false;
+        } catch (Exception e) {
+            log.warn("Failed to check otherName SANs: {}", e.getMessage());
+            return false;
+        }
+    }
+
+    private static boolean otherNameMatchesOid(byte[] derBytes, String expectedOid) {
+        try (ASN1InputStream asn1In = new ASN1InputStream(derBytes)) {
+            ASN1Sequence seq = ASN1Sequence.getInstance(asn1In.readObject());
+            if (seq.size() >= 1) {
+                ASN1ObjectIdentifier actualOid = ASN1ObjectIdentifier.getInstance(seq.getObjectAt(0));
+                return expectedOid.equals(actualOid.getId());
+            }
+        } catch (Exception e) {
+            log.debug("Failed to parse otherName ASN.1: {}", e.getMessage());
+        }
+        return false;
     }
 
     private static String extractCn(String dn) {
