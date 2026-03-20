@@ -181,7 +181,7 @@ class KeyStoreSyncServiceImplTest {
     }
 
     @Test
-    void syncKeyStoresToFilesystem_skipsWhenNoCaChain() {
+    void syncKeyStoresToFilesystem_fallsBackToIntermediateCaWhenCaChainEmpty() {
         CreateKeyResponseDTO keyPair = CreateKeyResponseDTO.builder()
                 .publicKeyPem("pub")
                 .privateKeyPem(privateKeyPem)
@@ -190,16 +190,18 @@ class KeyStoreSyncServiceImplTest {
         when(vaultSecretProvider.getCertificate()).thenReturn(certPem);
         when(vaultSecretProvider.getKeyPair()).thenReturn(keyPair);
         when(vaultSecretProvider.getCaChain()).thenReturn(List.of());
+        when(vaultSecretProvider.getIntermediateCa()).thenReturn(caPem);
         when(keyStoreService.createKeyStore(anyString(), anyString(), any(), anyString(), anyString()))
                 .thenReturn(validKeystoreBytes);
+        when(keyStoreService.createTrustStore(any(), anyString(), any())).thenReturn(validTruststoreBytes);
 
         keyStoreSyncService.syncKeyStoresToFilesystem();
 
-        verify(keyStoreService, never()).createTrustStore(any(), any(), any());
+        verify(keyStoreService).createTrustStore(eq(List.of(caPem)), anyString(), any());
     }
 
     @Test
-    void syncKeyStoresToFilesystem_skipsWhenNullCaChain() {
+    void syncKeyStoresToFilesystem_fallsBackToIntermediateCaWhenCaChainNull() {
         CreateKeyResponseDTO keyPair = CreateKeyResponseDTO.builder()
                 .publicKeyPem("pub")
                 .privateKeyPem(privateKeyPem)
@@ -208,6 +210,27 @@ class KeyStoreSyncServiceImplTest {
         when(vaultSecretProvider.getCertificate()).thenReturn(certPem);
         when(vaultSecretProvider.getKeyPair()).thenReturn(keyPair);
         when(vaultSecretProvider.getCaChain()).thenReturn(null);
+        when(vaultSecretProvider.getIntermediateCa()).thenReturn(caPem);
+        when(keyStoreService.createKeyStore(anyString(), anyString(), any(), anyString(), anyString()))
+                .thenReturn(validKeystoreBytes);
+        when(keyStoreService.createTrustStore(any(), anyString(), any())).thenReturn(validTruststoreBytes);
+
+        keyStoreSyncService.syncKeyStoresToFilesystem();
+
+        verify(keyStoreService).createTrustStore(eq(List.of(caPem)), anyString(), any());
+    }
+
+    @Test
+    void syncKeyStoresToFilesystem_skipsTruststoreWhenNoCaChainAndNoIntermediateCa() {
+        CreateKeyResponseDTO keyPair = CreateKeyResponseDTO.builder()
+                .publicKeyPem("pub")
+                .privateKeyPem(privateKeyPem)
+                .build();
+
+        when(vaultSecretProvider.getCertificate()).thenReturn(certPem);
+        when(vaultSecretProvider.getKeyPair()).thenReturn(keyPair);
+        when(vaultSecretProvider.getCaChain()).thenReturn(List.of());
+        when(vaultSecretProvider.getIntermediateCa()).thenReturn(null);
         when(keyStoreService.createKeyStore(anyString(), anyString(), any(), anyString(), anyString()))
                 .thenReturn(validKeystoreBytes);
 
@@ -327,6 +350,7 @@ class KeyStoreSyncServiceImplTest {
         when(vaultSecretProvider.getCertificate()).thenReturn(certPem);
         when(vaultSecretProvider.getKeyPair()).thenReturn(keyPair);
         when(vaultSecretProvider.getCaChain()).thenReturn(Collections.emptyList());
+        when(vaultSecretProvider.getIntermediateCa()).thenReturn(null);
         when(keyStoreService.createKeyStore(anyString(), anyString(), any(), anyString(), anyString()))
                 .thenReturn(ksNoCaChain);
 
@@ -648,6 +672,7 @@ class KeyStoreSyncServiceImplTest {
         when(vaultSecretProvider.getCertificate()).thenReturn(null);
         when(vaultSecretProvider.getKeyPair()).thenReturn(null);
         when(vaultSecretProvider.getCaChain()).thenReturn(List.of());
+        when(vaultSecretProvider.getIntermediateCa()).thenReturn(null);
 
         keyStoreSyncService.syncKeyStoresToFilesystem();
 

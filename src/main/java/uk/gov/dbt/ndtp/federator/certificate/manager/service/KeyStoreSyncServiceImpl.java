@@ -69,6 +69,14 @@ public class KeyStoreSyncServiceImpl implements KeyStoreSyncService {
         CreateKeyResponseDTO keyPair = vaultSecretProvider.getKeyPair();
         List<String> caChain = vaultSecretProvider.getCaChain();
 
+        if ((caChain == null || caChain.isEmpty())) {
+            String intermediateCa = vaultSecretProvider.getIntermediateCa();
+            if (intermediateCa != null && !intermediateCa.isBlank()) {
+                log.info("CA chain is empty, falling back to intermediate CA for truststore");
+                caChain = List.of(intermediateCa);
+            }
+        }
+
         if (certificatePem != null && keyPair != null && keyPair.getPrivateKeyPem() != null) {
             Path keystorePath = basePath.resolve(config.getKeystoreFile());
             boolean needsUpdate = shouldUpdateKeyStore(
