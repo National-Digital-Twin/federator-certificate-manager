@@ -67,55 +67,75 @@ public class KeyStoreSyncServiceImpl implements KeyStoreSyncService {
 
         String certificatePem = vaultSecretProvider.getCertificate();
         CreateKeyResponseDTO keyPair = vaultSecretProvider.getKeyPair();
+        List<String> caChain = resolveCaChain();
+
+        syncKeyStore(config, basePath, keystorePassword, certificatePem, keyPair, caChain);
+        syncTrustStore(config, basePath, truststorePassword, caChain);
+    }
+
+    private List<String> resolveCaChain() {
         List<String> caChain = vaultSecretProvider.getCaChain();
-
-        if (certificatePem != null && keyPair != null && keyPair.getPrivateKeyPem() != null) {
-            Path keystorePath = basePath.resolve(config.getKeystoreFile());
-            boolean needsUpdate = shouldUpdateKeyStore(
-                    keystorePath,
-                    keystorePassword,
-                    keyPair.getPrivateKeyPem(),
-                    certificatePem,
-                    caChain,
-                    config.getKeystoreAlias());
-
-            if (needsUpdate) {
-                byte[] keystoreBytes = keyStoreService.createKeyStore(
-                        keyPair.getPrivateKeyPem(),
-                        certificatePem,
-                        caChain,
-                        keystorePassword,
-                        config.getKeystoreAlias());
-                validateKeyStore(keystoreBytes, keystorePassword, config.getKeystoreAlias());
-                fileSystemService.atomicWrite(keystorePath, keystoreBytes);
-                log.info("Keystore synchronized to {}", keystorePath);
-
-            } else {
-                log.debug("Keystore at {} is already in sync with Vault. Skipping update.", keystorePath);
-            }
-            // Always check password file synchronization independently
-            writePasswordToFile(keystorePath, config.getKeystorePasswordFile(), keystorePassword);
-        } else {
-            log.warn("Missing certificate or key pair in Vault. Skipping keystore synchronization.");
-        }
-
         if (caChain != null && !caChain.isEmpty()) {
-            Path truststorePath = basePath.resolve(config.getTruststoreFile());
-            boolean needsUpdate = shouldUpdateTrustStore(truststorePath, truststorePassword, caChain);
-
-            if (needsUpdate) {
-                byte[] truststoreBytes = keyStoreService.createTrustStore(caChain, truststorePassword, truststorePath);
-                validateTrustStore(truststoreBytes, truststorePassword);
-                fileSystemService.atomicWrite(truststorePath, truststoreBytes);
-                log.info("Truststore synchronized to {}", truststorePath);
-            } else {
-                log.debug("Truststore at {} is already in sync with Vault. Skipping update.", truststorePath);
-            }
-            // Always check password file synchronization independently
-            writePasswordToFile(truststorePath, config.getTruststorePasswordFile(), truststorePassword);
-        } else {
-            log.warn("Missing CA chain in Vault. Skipping truststore synchronization.");
+            return caChain;
         }
+        String intermediateCa = vaultSecretProvider.getIntermediateCa();
+        if (intermediateCa != null && !intermediateCa.isBlank()) {
+            log.info("CA chain is empty, falling back to signing CA for truststore");
+            return List.of(intermediateCa);
+        }
+        return caChain;
+    }
+
+    private void syncKeyStore(
+            CertificateProperties.Destination config,
+            Path basePath,
+            String keystorePassword,
+            String certificatePem,
+            CreateKeyResponseDTO keyPair,
+            List<String> caChain) {
+        if (certificatePem == null || keyPair == null || keyPair.getPrivateKeyPem() == null) {
+            log.warn("Missing certificate or key pair in Vault. Skipping keystore synchronization.");
+            return;
+        }
+        Path keystorePath = basePath.resolve(config.getKeystoreFile());
+        boolean needsUpdate = shouldUpdateKeyStore(
+                keystorePath,
+                keystorePassword,
+                keyPair.getPrivateKeyPem(),
+                certificatePem,
+                caChain,
+                config.getKeystoreAlias());
+
+        if (needsUpdate) {
+            byte[] keystoreBytes = keyStoreService.createKeyStore(
+                    keyPair.getPrivateKeyPem(), certificatePem, caChain, keystorePassword, config.getKeystoreAlias());
+            validateKeyStore(keystoreBytes, keystorePassword, config.getKeystoreAlias());
+            fileSystemService.atomicWrite(keystorePath, keystoreBytes);
+            log.info("Keystore synchronized to {}", keystorePath);
+        } else {
+            log.debug("Keystore at {} is already in sync with Vault. Skipping update.", keystorePath);
+        }
+        writePasswordToFile(keystorePath, config.getKeystorePasswordFile(), keystorePassword);
+    }
+
+    private void syncTrustStore(
+            CertificateProperties.Destination config, Path basePath, String truststorePassword, List<String> caChain) {
+        if (caChain == null || caChain.isEmpty()) {
+            log.warn("Missing CA chain in Vault. Skipping truststore synchronization.");
+            return;
+        }
+        Path truststorePath = basePath.resolve(config.getTruststoreFile());
+        boolean needsUpdate = shouldUpdateTrustStore(truststorePath, truststorePassword, caChain);
+
+        if (needsUpdate) {
+            byte[] truststoreBytes = keyStoreService.createTrustStore(caChain, truststorePassword, truststorePath);
+            validateTrustStore(truststoreBytes, truststorePassword);
+            fileSystemService.atomicWrite(truststorePath, truststoreBytes);
+            log.info("Truststore synchronized to {}", truststorePath);
+        } else {
+            log.debug("Truststore at {} is already in sync with Vault. Skipping update.", truststorePath);
+        }
+        writePasswordToFile(truststorePath, config.getTruststorePasswordFile(), truststorePassword);
     }
 
     private boolean shouldUpdateKeyStore(
