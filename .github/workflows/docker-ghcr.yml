@@ -46,17 +46,19 @@ jobs:
       id-token: write
     steps:
       - name: Validate docker target
+        env:
+          DOCKER_TARGET: ${{ inputs.docker_target }}
         run: |
-          if [[ "${{ inputs.docker_target }}" != "federator-certificate-manager" ]]; then
+          if [[ "${DOCKER_TARGET}" != "federator-certificate-manager" ]]; then
             echo "Docker target is invalid. Use federator-certificate-manager"
             exit 1
           fi
 
       - name: Checkout repo
-        uses: actions/checkout@v5
+        uses: actions/checkout@93cb6efe18208431cddfb8368fd83d5badbf9bfd # v5
 
       - name: Login to ghcr.io
-        uses: docker/login-action@v3
+        uses: docker/login-action@c94ce9fb468520275223c153574b00df6fe4bcc9 # v3
         with:
           registry: ghcr.io
           username: ${{ github.actor }}
@@ -66,14 +68,21 @@ jobs:
         run: echo "REPO=${GITHUB_REPOSITORY,,}" >>${GITHUB_ENV}
 
       - name: Get server and client jars
-        uses: actions/download-artifact@v5
+        uses: actions/download-artifact@634f93cb2916e3fdff6788551b99b062d0335ce0 # v5
         with:
           pattern: federator-certificate-manager-*.jar
           path: target
           merge-multiple: true
 
       - name: Build Server Image
-        run: docker build --no-cache --build-arg JAR_NAME="federator-certificate-manager-${{ inputs.jar_version }}" -t ghcr.io/${REPO}/federator-certificate-manager:staged -f "${{ github.workspace }}/docker/Dockerfile" --target ${{ inputs.docker_target }} .
+        env:
+          JAR_VERSION: ${{ inputs.jar_version }}
+          DOCKER_TARGET: ${{ inputs.docker_target }}
+        run: >
+          docker build --no-cache --build-arg JAR_NAME="federator-certificate-manager-${JAR_VERSION}"
+          -t ghcr.io/${REPO}/federator-certificate-manager:staged
+          -f "${GITHUB_WORKSPACE}/docker/Dockerfile"
+          --target "${DOCKER_TARGET}" .
 
       - name: Run Trivy Scan on Server Docker Image
         uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1 # v0.35.0
@@ -86,12 +95,12 @@ jobs:
         continue-on-error: true
 
       - name: Tag Server Image with tag(s) ${{ inputs.image_tag }}
+        env:
+          IMAGE_TAG: ${{ inputs.image_tag }}
         run: |
-          ./.github/actions/docker-tags.sh "ghcr.io/${REPO}/federator-certificate-manager" "${{ inputs.image_tag }}"
+          ./.github/actions/docker-tags.sh "ghcr.io/${REPO}/federator-certificate-manager" "${IMAGE_TAG}"
           docker rmi ghcr.io/${REPO}/federator-certificate-manager:staged
 
       - name: Push Server Image
         if: ${{ !inputs.dry_run }}
         run: docker push --all-tags ghcr.io/${REPO}/federator-certificate-manager
-
-
