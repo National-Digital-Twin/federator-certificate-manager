@@ -110,6 +110,8 @@ mvn spotless:apply
 
 ## Installation
 
+> **Running locally with management-node?** Skip to [Local Development with Management Node](#local-development-with-management-node) for a streamlined setup.
+
 ### Step 1: Provision HashiCorp Vault
 
 Enable a KV v2 secrets engine at the mount path matching your configuration:
@@ -154,7 +156,7 @@ To simulate starting from a bootstrap certificate, run the following command to 
 make bootstrap-test-certs-clean
 ```
 
-If running in tandem with management node and IdP, this script will import the CA certificate to ensure trusted communication between components. The location of this certificate can be set within the `Makefile` in the `ROOT_CA_DIR` variable. 
+If running in tandem with management node and IdP, this script will import the CA certificate to ensure trusted communication between components. The location of this certificate can be set within the `Makefile` in the `ROOT_CA_DIR` variable.
 
 ### Step 3: Configure the Application
 
@@ -312,6 +314,154 @@ INFO  CertificateManagerServiceImpl - Intermediate CA is valid
 INFO  CertificateManagerServiceImpl - Certificate is valid. No renewal needed.
 INFO  CertificateSyncJob - Starting certificate sync...
 INFO  KeyStoreSyncServiceImpl - Keystore is up to date, skipping write
+```
+
+---
+
+## Local Development with Management Node
+
+This section covers running the certificate manager locally alongside the management-node and its Keycloak/Vault infrastructure. It assumes you have already completed the [management-node local setup](https://github.com/National-Digital-Twin/management-node#readme).
+
+### Prerequisites
+
+- Management Node is running on `https://localhost:8090`
+- Keycloak is running on `https://localhost:8443` with the `mng-node` realm configured
+- Vault is running on `http://localhost:8200`, initialised and unsealed
+- The management-node's Vault PKI engine is configured (see management-node README, Vault Setup section)
+
+### 1. Enable the Vault KV v2 Engine
+
+The certificate manager uses a separate KV v2 engine (not the PKI engine) to store its secrets:
+
+```sh
+docker exec -e VAULT_TOKEN=$VAULT_TOKEN vault vault secrets enable -path=pki-client kv-v2
+```
+
+### 2. Enable Certificate Automation for the Organisation
+
+The sample data migration sets `certificate_automation_enabled = FALSE` for all organisations. Update the Environment Agency organisation to enable it:
+
+```sh
+docker exec -e PGPASSWORD=keycloak_db_user_password keycloak-postgres-1 \
+  psql -U keycloak_db_user -d keycloak_db -c \
+  "UPDATE mn.organisation SET certificate_automation_enabled = TRUE WHERE id = 1;"
+```
+
+### 3. Bootstrap: Get Initial Certificate Material
+
+The certificate manager needs initial certificate material in Vault before it can start. This uses the `management-node` client (which already has `request_bootstrap_certificate` from the management-node setup) to request a bootstrap certificate on behalf of the Environment Agency organisation.
+
+Run from the `management-node/docker` directory:
+
+**a. Generate a key pair for the organisation:**
+
+```sh
+openssl genrsa -out env.key 2048
+openssl req -new -key env.key -out env.csr -subj "/CN=api.env.gov.uk/O=Environment Agency/C=UK"
+```
+
+**b. Get a token and request the bootstrap certificate:**
+
+```sh
+TOKEN=$(curl -sk --cert client.crt --key client.key \
+  -d "grant_type=client_credentials&client_id=management-node" \
+  -d "client_secret=${KEYCLOAK_CLIENT_SECRET}" \
+  "https://localhost:8443/realms/mng-node/protocol/openid-connect/token" | jq -r .access_token)
+
+curl -sk --cert client.crt --key client.key \
+  -H "Authorization: Bearer $TOKEN" \
+  -H "Content-Type: application/json" \
+  -d "$(jq -n --arg csr "$(cat env.csr)" '{organisationId: 1, csr: $csr}')" \
+  "https://localhost:8090/api/v1/certificate/bootstrap" \
+  --output bootstrap_bundle.zip
+
+unzip -o bootstrap_bundle.zip
+```
+
+This produces `certificate.pem` and `ca-chain.pem`.
+
+**c. Deploy the bootstrap material to Vault:**
+
+```sh
+docker exec -e VAULT_TOKEN=$VAULT_TOKEN vault vault kv put pki-client/node-net/client/keypair \
+  privateKey="$(cat env.key)" \
+  publicKey="$(openssl rsa -in env.key -pubout 2>/dev/null)"
+
+docker exec -e VAULT_TOKEN=$VAULT_TOKEN vault vault kv put pki-client/node-net/client/certificate \
+  certificate="$(cat certificate.pem)"
+
+docker exec -e VAULT_TOKEN=$VAULT_TOKEN vault vault kv put pki-client/node-net/client/ca-chain \
+  chain="$(cat ca-chain.pem)"
+```
+
+### 4. Configure FEDERATOR_ENV for X.509 Authentication
+
+The cert-manager authenticates with Keycloak using its mTLS client certificate, not a client secret. Update the `FEDERATOR_ENV` client in the Keycloak admin console:
+
+1. Navigate to **mng-node realm** → **Clients** → **FEDERATOR_ENV**
+2. Go to the **Credentials** tab
+3. Change **Client Authenticator** to `X509 Certificate`
+4. Set **Subject DN** to `CN=api.env.gov.uk`
+6. Save
+
+Then add the certificate roles:
+
+1. Go to the **Service accounts roles** tab
+2. Click **Assign role** → filter by **management-node** client
+3. Add: `create_keys`, `sign_certificate`, and `access_public_certificates`
+
+> **Note:** The cert-manager must authenticate as `FEDERATOR_ENV` because the management-node maps the JWT's client ID to an organisation via the Producer/Consumer `idpClientId` field. A separate client ID would not resolve to any organisation. In production, each organisation's cert-manager would authenticate as that organisation's client.
+
+### 5. Create `application-local.yml`
+
+Create `src/main/resources/application-local.yml`:
+
+```yaml
+spring:
+  cloud:
+    vault:
+      token: <your_vault_root_token>
+
+application:
+  vault:
+    secret-path: pki-client/node-net/client
+  client:
+    key-store: /tmp/federator-secrets/keystore.p12
+    trust-store: /tmp/federator-secrets/truststore.p12
+    key-store-type: PKCS12
+  oauth2:
+    client-id: FEDERATOR_ENV
+  certificate:
+    subject:
+      common-name: api.env.gov.uk
+    destination:
+      path: /tmp/federator-secrets/
+```
+
+> **Note:** The `key-store` and `trust-store` point at the same destination path where the sync job writes. On startup, the sync job reads the bootstrap material from Vault and creates the initial keystores. The renewal job then uses those keystores for mTLS communication with Keycloak and the management-node. No `client-secret` is needed — the cert-manager authenticates with Keycloak using the X.509 client certificate in the keystore.
+
+### 6. Run
+
+```sh
+mvn spring-boot:run -Dspring-boot.run.profiles=local
+```
+
+On startup:
+1. The **sync job** runs first — reads the bootstrap material from Vault and writes `keystore.p12` and `truststore.p12` to the destination path
+2. The **renewal job** runs next — uses those keystores for mTLS, detects the bootstrap certificate (short TTL + bootstrap OID), and triggers automatic renewal
+
+If working correctly, you should see `Bootstrap certificate detected. Initiating immediate renewal...` in the logs.
+
+To observe the renewal cycle more easily during development, you can add shorter intervals to your `application-local.yml`:
+
+```yaml
+application:
+  scheduling:
+    certificate-manager:
+      renewal-rate: 60000    # 1 minute
+      sync-rate: 30000       # 30 seconds
+  certificate:
+    renewal-threshold-percentage: 100  # always renew
 ```
 
 ---

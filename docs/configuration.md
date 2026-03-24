@@ -117,6 +117,7 @@ Managed by `TokenCacheServiceImpl` using Caffeine (not externalized):
 |---|---|---|---|
 | `application.certificate.renewal-threshold-percentage` | `CERT_RENEWAL_THRESHOLD` | `10` | Percentage of total validity period remaining that triggers renewal |
 | `application.certificate.key-size` | `CERT_KEY_SIZE` | `2048` | RSA key size in bits (`2048` or `4096`) |
+| `application.certificate.bootstrap-oid` | `BOOTSTRAP_OID` | `1.3.6.1.4.1.32473.1.1` | OID used to identify bootstrap certificates via an otherName SAN entry. When detected, the certificate is immediately renewed |
 | `application.certificate.intermediate.min-valid-days` | `CERT_INTERMEDIATE_MIN_VALID_DAYS` | `14` | Minimum days of validity for the intermediate CA before refresh |
 
 ### Subject Fields

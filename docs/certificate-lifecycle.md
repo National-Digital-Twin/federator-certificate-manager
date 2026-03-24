@@ -18,7 +18,9 @@ graph TB
         D --> E
         E --> F{Certificate missing?}
         F -- Yes --> G[Renew Certificate]
-        F -- No --> H{Validity below threshold?}
+        F -- No --> FB{Bootstrap certificate?}
+        FB -- Yes --> G
+        FB -- No --> H{Validity below threshold?}
         H -- Yes --> G
         H -- No --> I[No action required]
     end
@@ -86,7 +88,7 @@ sequenceDiagram
     CMS->>VSP: getCertificate()
     VSP-->>CMS: certificatePem (or null)
 
-    alt Certificate missing or below threshold
+    alt Certificate missing
         Note over CMS: Phase 3 — Certificate Renewal
         CMS->>PKI: createKeyPair("RSA", keySize)
         PKI-->>CMS: CreateKeyResponseDTO (publicKeyPem, privateKeyPem)
@@ -107,6 +109,12 @@ sequenceDiagram
         CMS->>VSP: persistCertificate(certificate)
         CMS->>VSP: persistCaChain(caChain)
         CMS->>VSP: persistIntermediateCa(issuingCa)
+    else Bootstrap certificate (OID detected)
+        CMS->>PU: hasOtherNameSan(cert, bootstrapOid)
+        PU-->>CMS: true
+        Note over CMS: Immediate renewal (same flow as above)
+    else Below threshold
+        Note over CMS: Renewal (same flow as above)
     else Certificate valid
         CMS-->>Scheduler: No renewal needed
     end
@@ -126,6 +134,14 @@ if remainingPct <= renewalThresholdPercentage:
 ```
 
 **Example:** For a certificate valid for 365 days with a 10% threshold, renewal triggers when fewer than 36.5 days remain.
+
+### Bootstrap Certificate Detection
+
+Before checking the renewal threshold, the service checks whether the current certificate is a bootstrap certificate. Bootstrap certificates are identified by a custom OID (`1.3.6.1.4.1.32473.1.1` by default, configurable via `BOOTSTRAP_OID`) embedded in an `otherName` Subject Alternative Name entry.
+
+When detected, renewal is triggered immediately regardless of remaining validity. The replacement certificate issued through the standard renewal flow will not contain the bootstrap OID marker.
+
+See the Management Node documentation for the full bootstrap onboarding flow.
 
 ---
 

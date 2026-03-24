@@ -108,7 +108,7 @@ C4Component
     Container_Boundary(pki, "PKI Layer") {
         Component(pkiSvc, "PkiService", "Service", "RSA key generation, PKCS#10 CSR creation")
         Component(keyStoreSvc, "KeyStoreService", "Service", "PKCS#12 keystore/truststore creation")
-        Component(pemUtil, "PemUtil", "Utility", "PEM encode/decode, certificate validation")
+        Component(pemUtil, "PemUtil", "Utility", "PEM encode/decode, certificate validation, otherName SAN parsing")
     }
 
     Container_Boundary(infra, "Infrastructure Layer") {
