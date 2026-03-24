@@ -27,10 +27,7 @@ As part of NDTP’s commitment to open-source compliance and security best pract
 | Manual Review | Review of flagged licenses and compliance gaps | `2026-03-24` |
 
 Evidence artifacts generated during this audit:
-- `target/audit/fossology-nomos-clean.json`
-- `target/audit/fossology-copyright-clean.json`
-- `target/audit/THIRD-PARTY.txt`
-- [docs/third-party-notices.md](docs/third-party-notices.md)
+- [third-party-notices.md](docs/third-party-notices.md)
 
 ---
 
