@@ -273,3 +273,7 @@ graph LR
 | `RestClientConfigurationException` | `RestClientConfig` | mTLS keystore loading failures |
 
 All exceptions extend `RuntimeException` and propagate up to the scheduled job level, where they are logged. The scheduler continues to invoke the job at the next interval — no circuit-breaking or retry logic is applied at the job level.
+
+© Crown Copyright 2026. This work has been developed by the National Digital Twin Programme and is legally attributed to the Department for Business and Trade (UK) as the governing entity.
+  
+Licensed under the Open Government Licence v3.0.  

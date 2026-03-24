@@ -1,10 +1,8 @@
-# Federator Certificate Manager
+# README
 
-**Repository:** `federator-certificate-manager`
-
-**Description:** `The Federator Certificate Manager is a non-interactive Spring Boot service that automates X.509 certificate lifecycle management for federator components within the Node-Net.`
-
-**Repository Status:** `Private – NDTP InnerSource`
+**Repository:** `federator-certificate-manager`  
+**Description:** `The Federator Certificate Manager is a non-interactive Spring Boot service that automates X.509 certificate lifecycle management for federator components within the Node-Net.`  
+**SPDX-License-Identifier:** `Apache-2.0 AND OGL-UK-3.0 `
 
 ---
 
@@ -14,9 +12,25 @@ The Federator Certificate Manager is a non-interactive Spring Boot service that 
 
 The service integrates with **HashiCorp Vault** (KV v2) for secret persistence, an external **Management Node** API for PKI operations (intermediate CA retrieval and CSR signing), and an **OAuth2 Identity Provider** for token-based authentication. All external HTTP communication is secured via mutual TLS (mTLS).
 
-> **This repository is private and governed by the NDTP InnerSource Licence – Version 1.0.**
-> It is intended solely for collaboration among NDTP teams and authorised suppliers.
-> It is **not open source** and must not be disclosed, redistributed, or published externally.
+---
+
+## Prerequisites
+
+| Dependency | Version | Purpose |
+|------------|---------|---------|
+| **JDK** | 21+ | Runtime and compilation |
+| **Apache Maven** | 3.9+ | Build tool |
+| **HashiCorp Vault** | 1.15+ | Secret storage (KV v2 engine) |
+| **Management Node** | — | External PKI API (intermediate CA, CSR signing) |
+| **OAuth2 IdP** | — | Identity Provider (e.g., Keycloak) for client credentials |
+| **JKS Keystores** | — | Client keystore and truststore for mTLS |
+
+### System Requirements
+
+- **OS:** Linux, macOS, or Windows with Java 21+
+- **Memory:** 256 MB minimum heap (512 MB recommended)
+- **Disk:** Writable path for PKCS#12 output files
+- **Network:** Outbound HTTPS to Vault, Management Node, and IdP
 
 ---
 
@@ -44,26 +58,6 @@ For detailed architecture documentation including C4 diagrams, sequence diagrams
 | [Configuration Reference](docs/configuration.md) | All `application.yml` properties with descriptions |
 | [Vault Integration](docs/vault-integration.md) | Vault KV v2 secret paths and operations |
 | [Security & mTLS](docs/security.md) | OAuth2 flow, mTLS setup, and token caching |
-
----
-
-## Prerequisites
-
-| Dependency | Version | Purpose |
-|------------|---------|---------|
-| **JDK** | 21+ | Runtime and compilation |
-| **Apache Maven** | 3.9+ | Build tool |
-| **HashiCorp Vault** | 1.15+ | Secret storage (KV v2 engine) |
-| **Management Node** | — | External PKI API (intermediate CA, CSR signing) |
-| **OAuth2 IdP** | — | Identity Provider (e.g., Keycloak) for client credentials |
-| **JKS Keystores** | — | Client keystore and truststore for mTLS |
-
-### System Requirements
-
-- **OS:** Linux, macOS, or Windows with Java 21+
-- **Memory:** 256 MB minimum heap (512 MB recommended)
-- **Disk:** Writable path for PKCS#12 output files
-- **Network:** Outbound HTTPS to Vault, Management Node, and IdP
 
 ---
 
@@ -542,15 +536,11 @@ This repository has been developed with public funding as part of the National D
 
 ## Licensing
 
-This repository, including all source code, documentation, configuration files, and related materials, is licensed under the:
+This repository contains both source code and documentation, which are covered by different licenses:  
+- **Code:** Licensed under the [Apache License 2.0](./LICENSE.md).
+- **Documentation:** Licensed under the [Open Government Licence v3.0](./OGL_LICENCE.md).
 
-**NDTP InnerSource Licence – Version 1.0**
-See [LICENSE.md](LICENSE.md) for the full licence text.
-
-> This repository is **not open source**.
-> Redistribution, disclosure, or publication of any part of this repository is prohibited without the **explicit, written approval** of the NDTP Management Team.
-
-All intellectual property rights are held by the **Department for Business and Trade (UK)** as the governing entity for the National Digital Twin Programme (NDTP).
+See [`LICENSE.md`](LICENSE.md), [`OGL_LICENCE.md`](OGL_LICENCE.md) and [`NOTICE.md`](NOTICE.md) for details.
 
 ## Security and Responsible Disclosure
 
@@ -565,11 +555,17 @@ mvn package
 # Output: target/federator-certificate-manager-1.0.0.jar
 ```
 
-Download the [latest SBOM for this codebase](../../dependency-graph/sbom) to view the current list of components.
+### Current SBOM
+
+Download the [latest SBOM for this codebase](https://github.com/National-Digital-Twin/federator-certificate-manager/dependency-graph/sbom) to view the current list of components.
 
 ## Contributing
 
 We welcome contributions that align with the Programme's objectives. Please read our `CONTRIBUTING.md` guidelines before submitting pull requests.
+
+## Acknowledgements  
+This repository has benefited from collaboration with various organisations. For a list of acknowledgments, see [`ACKNOWLEDGEMENTS.md`](./ACKNOWLEDGEMENTS.md).  
+
 
 ## Support and Contact
 
@@ -577,4 +573,4 @@ For questions or support, check our Issues or contact the NDTP team by emailing 
 
 **Maintained by the National Digital Twin Programme (NDTP).**
 
-© Crown Copyright 2025. This work has been developed by the National Digital Twin Programme and is legally attributed to the Department for Business and Trade (UK) as the governing entity.
+© Crown Copyright 2026. This work has been developed by the National Digital Twin Programme and is legally attributed to the Department for Business and Trade (UK) as the governing entity.
