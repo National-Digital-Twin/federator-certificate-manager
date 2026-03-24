@@ -2,6 +2,7 @@
 
 **Repository:** `federator-certificate-manager`  
 **Description:** `Details the responsible disclosure process for security vulnerabilities.`  
+**SPDX-License-Identifier:** `OGL-UK-3.0`  
 
 ## Responsible Disclosure 
 
@@ -24,7 +25,7 @@ If you believe you have found a security vulnerability in this repository, **ple
 
 ### **How to Report a Security Issue** 
 
-1. **Do not open a public issue on GitHub.** Instead, report security concerns via email to **ndtp@businessandtrade.gov.uk**. 
+1. **Do not open a public issue on GitHub.** Instead, report security concerns via email to **[ndtp@businessandtrade.gov.uk]**. 
 2. **Provide detailed information about the vulnerability**, including: 
    - A clear description of the issue. 
    - Steps to reproduce the vulnerability. 
@@ -61,13 +62,14 @@ To help maintain security across NDTP repositories, we follow these principles:
 - Sensitive credentials **must not be included** in public repositories. 
 - Security patches are applied in a timely manner, with priority given to critical vulnerabilities. 
 
+For more details, refer to our **Secure Development Guidelines** [Link to internal security policy, if available]. 
+
 ---
 
 **Maintained by the National Digital Twin Programme (NDTP).** 
 
-© Crown Copyright 2025. This work has been developed by the National Digital Twin Programme and is legally attributed to the Department for Business and Trade (UK) as the governing entity. 
+© Crown Copyright 2026. This work has been developed by the National Digital Twin Programme and is legally attributed to the Department for Business and Trade (UK) as the governing entity. 
 
-Licensed under the NDTP InnerSource Licence – Version 1.0.
+Licensed under the Open Government Licence v3.0. 
 
-For full licensing terms, see [LICENSE.md](LICENSE.md).
-
+For full licensing terms, see [OGL_LICENCE.md](./OGL_LICENCE.md).
