@@ -2,6 +2,7 @@
 
 **Repository:** `federator-certificate-manager`  
 **Description:** `Tracks all notable changes, version history, and roadmap toward 1.0.0 following Semantic Versioning.`  
+**SPDX-License-Identifier:** `OGL-UK-3.0`  
 
 All notable changes to this repository will be documented in this file.
 
@@ -27,6 +28,23 @@ This project follows **Semantic Versioning (SemVer)** ([semver.org](https://semv
 
 ### Changed 
 - Placeholder for changes to existing functionality. 
+
+---
+
+## [0.90.0] – 2026-03-27
+
+### Initial Public Release (Pre-Stable) 
+
+This is the first public release of this repository under NDTP's open-source governance model. 
+Since this release is **pre-1.0.0**, changes may still occur that are **not fully backward-compatible**. 
+
+#### Initial Features 
+- Key functionality for federator certificate management. 
+- Documentation and onboarding guidance. 
+
+#### Known Limitations 
+- Some components are subject to change before `1.0.0`. 
+- APIs may evolve based on partner feedback and internal testing. 
 
 ---
 
@@ -63,9 +81,8 @@ Once `1.0.0` is reached, future versions will follow **strict SemVer rules**.
 
 **Maintained by the National Digital Twin Programme (NDTP).** 
 
-© Crown Copyright 2025. This work has been developed by the National Digital Twin Programme and is legally attributed to the Department for Business and Trade (UK) as the governing entity.
+© Crown Copyright 2026. This work has been developed by the National Digital Twin Programme and is legally attributed to the Department for Business and Trade (UK) as the governing entity.
 
-Licensed under the NDTP InnerSource Licence – Version 1.0.
+Licensed under the Open Government Licence v3.0.
 
-For full licensing terms, see [LICENSE.md](LICENSE.md).
-
+For full licensing terms, see [OGL_LICENCE.md](OGL_LICENCE.md).
