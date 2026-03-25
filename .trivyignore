@@ -4,3 +4,5 @@ CVE-2026-1584
 CVE-2026-32767
 # libpng: LIBPNG has a heap buffer. 
 CVE-2026-25646
+# zlib: Arbitrary code execution via buffer overflow 
+CVE-2026-22184
