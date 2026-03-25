@@ -6,6 +6,8 @@
 
 package uk.gov.dbt.ndtp.federator.certificate.manager.service.pki;
 
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
@@ -60,6 +62,8 @@ public class VaultSecretProviderImpl implements VaultSecretProvider {
      *
      * @param keyPairDto the DTO containing the public and private keys in PEM format
      */
+    @Retry(name = "vault")
+    @CircuitBreaker(name = "vault")
     @Override
     public void persistKeyPair(CreateKeyResponseDTO keyPairDto) {
         ensureKvMountExists();
@@ -79,6 +83,8 @@ public class VaultSecretProviderImpl implements VaultSecretProvider {
      *
      * @param certificate the certificate in PEM format
      */
+    @Retry(name = "vault")
+    @CircuitBreaker(name = "vault")
     @Override
     public void persistCertificate(String certificate) {
         ensureKvMountExists();
@@ -97,6 +103,8 @@ public class VaultSecretProviderImpl implements VaultSecretProvider {
      *
      * @param caChain the list of certificates in the chain in PEM format
      */
+    @Retry(name = "vault")
+    @CircuitBreaker(name = "vault")
     @Override
     public void persistCaChain(List<String> caChain) {
         ensureKvMountExists();
@@ -116,6 +124,8 @@ public class VaultSecretProviderImpl implements VaultSecretProvider {
      *
      * @param intermediateCa the Intermediate CA certificate in PEM format
      */
+    @Retry(name = "vault")
+    @CircuitBreaker(name = "vault")
     @Override
     public void persistIntermediateCa(String intermediateCa) {
         ensureKvMountExists();
@@ -133,6 +143,8 @@ public class VaultSecretProviderImpl implements VaultSecretProvider {
         return baseRelativePath.isEmpty() ? suffix : baseRelativePath + STRING_DELIMITER + suffix;
     }
 
+    @Retry(name = "vault")
+    @CircuitBreaker(name = "vault")
     @Override
     public String getCertificate() {
         ensureKvMountExists();
@@ -156,6 +168,8 @@ public class VaultSecretProviderImpl implements VaultSecretProvider {
         }
     }
 
+    @Retry(name = "vault")
+    @CircuitBreaker(name = "vault")
     @Override
     public CreateKeyResponseDTO getKeyPair() {
         ensureKvMountExists();
@@ -183,6 +197,8 @@ public class VaultSecretProviderImpl implements VaultSecretProvider {
         }
     }
 
+    @Retry(name = "vault")
+    @CircuitBreaker(name = "vault")
     @Override
     public List<String> getCaChain() {
         ensureKvMountExists();
@@ -221,6 +237,8 @@ public class VaultSecretProviderImpl implements VaultSecretProvider {
         return certs;
     }
 
+    @Retry(name = "vault")
+    @CircuitBreaker(name = "vault")
     @Override
     public String getIntermediateCa() {
         ensureKvMountExists();
@@ -244,6 +262,8 @@ public class VaultSecretProviderImpl implements VaultSecretProvider {
         }
     }
 
+    @Retry(name = "vault")
+    @CircuitBreaker(name = "vault")
     @Override
     public void persistSecret(String suffix, Map<String, String> secret) {
         ensureKvMountExists();
@@ -252,6 +272,8 @@ public class VaultSecretProviderImpl implements VaultSecretProvider {
         persist(relativePath, secret, "generic secret [" + suffix + "]");
     }
 
+    @Retry(name = "vault")
+    @CircuitBreaker(name = "vault")
     @Override
     public Map<String, Object> getSecret(String suffix) {
         ensureKvMountExists();

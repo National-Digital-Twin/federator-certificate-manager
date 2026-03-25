@@ -61,11 +61,60 @@ application:
       # Alias for the identity key in the keystore
       keystore-alias: ${CERT_DEST_KEYSTORE_ALIAS:federator}
 
+resilience4j:
+  retry:
+    instances:
+      management-node:
+        max-attempts: ${RESILIENCE4J_MN_RETRY_MAX_ATTEMPTS:3}
+        wait-duration: ${RESILIENCE4J_MN_RETRY_WAIT:500ms}
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: ${RESILIENCE4J_MN_RETRY_MULTIPLIER:2}
+        retry-exceptions:
+          - uk.gov.dbt.ndtp.federator.certificate.manager.exception.ManagementNodeException
+      vault:
+        max-attempts: ${RESILIENCE4J_VAULT_RETRY_MAX_ATTEMPTS:3}
+        wait-duration: ${RESILIENCE4J_VAULT_RETRY_WAIT:500ms}
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: ${RESILIENCE4J_VAULT_RETRY_MULTIPLIER:2}
+        retry-exceptions:
+          - uk.gov.dbt.ndtp.federator.certificate.manager.exception.VaultException
+      oauth2:
+        max-attempts: ${RESILIENCE4J_OAUTH2_RETRY_MAX_ATTEMPTS:3}
+        wait-duration: ${RESILIENCE4J_OAUTH2_RETRY_WAIT:500ms}
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: ${RESILIENCE4J_OAUTH2_RETRY_MULTIPLIER:2}
+        retry-exceptions:
+          - uk.gov.dbt.ndtp.federator.certificate.manager.exception.OAuth2TokenException
+  circuitbreaker:
+    instances:
+      management-node:
+        failure-rate-threshold: ${RESILIENCE4J_MN_CB_FAILURE_RATE:50}
+        sliding-window-size: ${RESILIENCE4J_MN_CB_WINDOW_SIZE:10}
+        sliding-window-type: COUNT_BASED
+        minimum-number-of-calls: ${RESILIENCE4J_MN_CB_MIN_CALLS:10}
+        permitted-number-of-calls-in-half-open-state: ${RESILIENCE4J_MN_CB_HALF_OPEN_CALLS:3}
+        wait-duration-in-open-state: ${RESILIENCE4J_MN_CB_WAIT_OPEN:10s}
+      vault:
+        failure-rate-threshold: ${RESILIENCE4J_VAULT_CB_FAILURE_RATE:50}
+        sliding-window-size: ${RESILIENCE4J_VAULT_CB_WINDOW_SIZE:10}
+        sliding-window-type: COUNT_BASED
+        minimum-number-of-calls: ${RESILIENCE4J_VAULT_CB_MIN_CALLS:10}
+        permitted-number-of-calls-in-half-open-state: ${RESILIENCE4J_VAULT_CB_HALF_OPEN_CALLS:3}
+        wait-duration-in-open-state: ${RESILIENCE4J_VAULT_CB_WAIT_OPEN:10s}
+      oauth2:
+        failure-rate-threshold: ${RESILIENCE4J_OAUTH2_CB_FAILURE_RATE:50}
+        sliding-window-size: ${RESILIENCE4J_OAUTH2_CB_WINDOW_SIZE:10}
+        sliding-window-type: COUNT_BASED
+        minimum-number-of-calls: ${RESILIENCE4J_OAUTH2_CB_MIN_CALLS:10}
+        permitted-number-of-calls-in-half-open-state: ${RESILIENCE4J_OAUTH2_CB_HALF_OPEN_CALLS:3}
+        wait-duration-in-open-state: ${RESILIENCE4J_OAUTH2_CB_WAIT_OPEN:10s}
+
 # Logging Configuration
 logging:
   level:
     org.springframework.security: ${LOG_LEVEL_SPRING_SECURITY:DEBUG}
     uk.gov.dbt.ndtp.federator.certificate.manager: ${LOG_LEVEL_APP:DEBUG}
+    io.github.resilience4j: ${LOG_LEVEL_RESILIENCE4J:DEBUG}
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [%X{clientId}] - %msg%n"
     file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [%X{clientId}] - %msg%n"

@@ -1,0 +1,35 @@
+spring:
+  main:
+    web-application-type: none
+  scheduling:
+    enabled: false
+  cloud:
+    vault:
+      enabled: false
+
+resilience4j:
+  retry:
+    instances:
+      management-node:
+        max-attempts: 3
+        wait-duration: 100ms
+        enable-exponential-backoff: false
+      vault:
+        max-attempts: 3
+        wait-duration: 100ms
+        enable-exponential-backoff: false
+      oauth2:
+        max-attempts: 3
+        wait-duration: 100ms
+        enable-exponential-backoff: false
+  circuitbreaker:
+    instances:
+      management-node:
+        minimum-number-of-calls: 10
+        wait-duration-in-open-state: 1s
+      vault:
+        minimum-number-of-calls: 10
+        wait-duration-in-open-state: 1s
+      oauth2:
+        minimum-number-of-calls: 10
+        wait-duration-in-open-state: 1s
