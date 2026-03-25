@@ -7,7 +7,9 @@ spring:
     vault:
       uri: ${VAULT_URI:http://localhost:8200}
       token: ${VAULT_TOKEN:}
-      authentication: token
+      authentication: ${VAULT_AUTHENTICATION:token}
+      kubernetes:
+        role: ${VAULT_AUTH_ROLE:certificate-manager}
 
 application:
   vault:
