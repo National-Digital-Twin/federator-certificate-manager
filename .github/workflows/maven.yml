@@ -134,7 +134,8 @@ jobs:
           exit-code: 1
           ignore-unfixed: true
           severity: "CRITICAL,HIGH"
-        continue-on-error: true
+          trivyignores: .trivyignore
+        continue-on-error: false
 
       - name: Clean up docker image
         run: docker rmi ghcr.io/${REPO}/federator-certificate-manager:staged
