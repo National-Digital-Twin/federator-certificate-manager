@@ -6,6 +6,8 @@
 
 package uk.gov.dbt.ndtp.federator.certificate.manager.service.idp;
 
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
@@ -59,6 +61,8 @@ public class OAuth2TokenServiceImpl implements OAuth2TokenService {
      * @return a TokenResponse containing the access token and expiration time
      * @throws OAuth2TokenException if the token request fails or the response is invalid
      */
+    @Retry(name = "oauth2")
+    @CircuitBreaker(name = "oauth2")
     @Override
     public TokenResponse getAccessToken() {
         log.debug("Requesting OAuth2 token from {}", tokenUri);

@@ -6,6 +6,8 @@
 
 package uk.gov.dbt.ndtp.federator.certificate.manager.service;
 
+import io.github.resilience4j.circuitbreaker.annotation.CircuitBreaker;
+import io.github.resilience4j.retry.annotation.Retry;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.hc.client5.http.impl.classic.CloseableHttpClient;
 import org.springframework.beans.factory.annotation.Value;
@@ -58,6 +60,8 @@ public class ManagementNodeServiceImpl implements ManagementNodeService {
      * @return the certificate response
      * @throws ManagementNodeException if the API call fails
      */
+    @Retry(name = "management-node")
+    @CircuitBreaker(name = "management-node")
     @Override
     public CertificateResponseDTO getIntermediateCertificate() {
         String token = tokenCacheService.getToken();
@@ -84,6 +88,8 @@ public class ManagementNodeServiceImpl implements ManagementNodeService {
      * @param request CSR request
      * @return signed certificate response
      */
+    @Retry(name = "management-node")
+    @CircuitBreaker(name = "management-node")
     @Override
     public SignCertResponseDTO signCertificate(SignCertRequestDTO request) {
         String token = tokenCacheService.getToken();
