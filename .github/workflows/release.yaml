@@ -83,6 +83,8 @@ jobs:
       contents: read
       packages: write
       id-token: write
+    outputs:
+      image_tag: ${{ steps.get_version.outputs.version }}
     name: Publish to github packages
     needs: verify
     runs-on: ubuntu-latest
@@ -102,17 +104,25 @@ jobs:
         run: ./mvnw $MAVEN_CLI_OPTS package -DskipTests
       - name: Publish package
         run: ./mvnw $MAVEN_CLI_OPTS package -DskipTests
+      - name: get image tag from branch
+        id: get_version
+        run: |
+          BRANCH="${GITHUB_HEAD_REF:-$GITHUB_REF_NAME}"
+          VERSION="${BRANCH#release/}"
+          echo "version=$VERSION" >> $GITHUB_OUTPUT
 
   release-ghcr:
     permissions:
       contents: read
       packages: write
       id-token: write
-    name: "Build and release docker images to GHCR with tags '${{ inputs.image_tag }}, latest'"
-    needs: verify
+    name: "Build and release docker images to GHCR with tags '${{ needs.publish.outputs.image_tag }} latest'"
+    needs:
+      - verify
+      - publish
     uses: ./.github/workflows/docker-ghcr.yml
     with:
-      image_tag: "${{ inputs.image_tag }},latest"
+      image_tag: "${{ needs.publish.outputs.image_tag }},latest"
       jar_version: ${{ needs.verify.outputs.project_version }}
       dry_run: false
       docker_target: federator-certificate-manager
