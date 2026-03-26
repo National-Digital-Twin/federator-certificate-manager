@@ -18,19 +18,6 @@ This project follows **Semantic Versioning (SemVer)** ([semver.org](https://semv
 
 ---
 
-## [Unreleased] 
-
-### Added 
-- Placeholder for upcoming features and enhancements. 
-
-### Fixed 
-- Placeholder for bug fixes and security updates. 
-
-### Changed 
-- Placeholder for changes to existing functionality. 
-
----
-
 ## [0.90.0] – 2026-03-27
 
 ### Initial Public Release (Pre-Stable) 
