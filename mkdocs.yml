@@ -1,0 +1,85 @@
+site_name: Federator Certificate Manager
+site_description: >-
+  The Federator Certificate Manager is a headless Spring Boot service that automates X.509 certificate
+  lifecycle management for federator components within the NDTP Node-Net. It handles automated certificate
+  renewal, PKCS#12 keystore generation, and filesystem synchronisation, integrating with HashiCorp Vault
+  (KV v2) for secret persistence, an external Management Node API for PKI operations, and an OAuth2
+  Identity Provider for authentication — all secured via mutual TLS (mTLS).
+site_author: NDTP
+site_url: https://docs.ndtp.co.uk/
+edit_uri: edit/main/docs/
+nav: []
+theme:
+  features:
+    - content.code.annotate
+    - content.code.copy
+    - content.code.select
+    - content.tooltips
+    - navigation.indexes
+    - navigation.tracking
+    - search.highlight
+    - search.share
+    - search.suggest
+    - search.share
+    - navigation.instant
+    - navigation.instant.prefetch
+    - navigation.instant
+    - navigation.instant.progress
+    - navigation.path
+    - toc.follow
+
+
+  icon:
+    repo: fontawesome/brands/github
+  language: en
+  name: material
+  logo: assets/light-page_header_logo.png
+  favicon: assets/android-chrome-512x512-1-150x150.png
+  palette:
+    - media: "(prefers-color-scheme: light)"
+      scheme: default
+      primary: custom
+      toggle:
+        icon: material/brightness-7
+        name: Switch to dark mode
+    - media: "(prefers-color-scheme: dark)"
+      scheme: slate
+      primary: custom
+      toggle:
+        icon: material/brightness-4
+        name: Switch to light mode
+  font:
+    text: Roboto
+    code: Roboto Mono
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - tables
+  - pymdownx.highlight:
+      anchor_linenums: true
+      line_spans: __span
+      pygments_lang_class: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.superfences
+  - pymdownx.superfences:
+      custom_fences:
+        - name: mermaid
+          class: mermaid
+          format: !!python/name:pymdownx.superfences.fence_code_format
+extra_css:
+  - stylesheets/extra.css
+extra:
+  version:
+    provider: mike
+  generator: false
+plugins:
+  - include-markdown:
+        rewrite_relative_urls: true
+  - search
+  - git-revision-date-localized:
+        enabled: true
+copyright: |
+      &copy;Crown Copyright 2026. This work has been developed by the National Digital Twin Programme and is legally attributed to the Department for Business and Trade (UK) as the governing entity.  
+

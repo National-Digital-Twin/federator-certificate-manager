@@ -1,0 +1,8 @@
+# Lack of information on this CVE, with many pages on it leading to a 404 or claiming there's no mitigations. Worth keeping an eye on but can be ignored from scan.
+CVE-2026-1584
+# SiYuan: Authorization Bypass Allows Arbitrary SQL Execution
+CVE-2026-32767
+# libpng: LIBPNG has a heap buffer. 
+CVE-2026-25646
+# zlib: Arbitrary code execution via buffer overflow 
+CVE-2026-22184

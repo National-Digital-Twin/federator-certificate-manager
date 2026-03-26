@@ -1,0 +1,16 @@
+/*
+ * SPDX-License-Identifier: Apache-2.0
+ * © Crown Copyright 2026. This work has been developed by the National Digital Twin Programme and is legally
+ * attributed to the Department for Business and Trade (UK) as the governing entity.
+ */
+
+package uk.gov.dbt.ndtp.federator.certificate.manager.exception;
+
+/**
+ * Exception thrown when configuring the mTLS RestClient fails.
+ */
+public class RestClientConfigurationException extends RuntimeException {
+    public RestClientConfigurationException(String message, Throwable cause) {
+        super(message, cause);
+    }
+}

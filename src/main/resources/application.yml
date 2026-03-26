@@ -1,0 +1,120 @@
+spring:
+  main:
+    web-application-type: none
+  application:
+    name: ${SPRING_APPLICATION_NAME:certificate-manager}
+  cloud:
+    vault:
+      uri: ${VAULT_URI:http://localhost:8200}
+      token: ${VAULT_TOKEN:}
+      authentication: ${VAULT_AUTHENTICATION:token}
+      kubernetes:
+        role: ${VAULT_AUTH_ROLE:certificate-manager}
+
+application:
+  vault:
+    pki-mount: ${VAULT_PKI_MOUNT:pki-client}
+    secret-path: ${VAULT_SECRET_PATH:node-net/client}
+  client:
+    key-store: ${MTLS_KEYSTORE_PATH:/home/developer/Downloads/managementNode/docker/keystore.jks}
+    trust-store: ${MTLS_TRUSTSTORE_PATH:/home/developer/Downloads/managementNode/docker/truststore.jks}
+    key-store-password: ${MTLS_KEYSTORE_PASSWORD:changeit}
+    trust-store-password: ${MTLS_TRUSTSTORE_PASSWORD:changeit}
+    key-store-type: ${MTLS_KEYSTORE_TYPE:JKS}
+  oauth2:
+    token-uri: ${OAUTH2_TOKEN_URI:https://localhost:8443/realms/mng-node/protocol/openid-connect/token}
+    client-id: ${OAUTH2_CLIENT_ID:MANAGEMENT_NODE_CLIENT}
+  management-node:
+    base-url: ${MANAGEMENT_NODE_BASE_URL:https://localhost:8090}
+  scheduling:
+    certificate-manager:
+      renewal-rate: ${CERT_RENEWAL_RATE:3600000} # 1 hour in milliseconds
+      sync-rate: ${CERT_SYNC_RATE:60000} # 1 minute in milliseconds
+  certificate:
+    renewal-threshold-percentage: ${CERT_RENEWAL_THRESHOLD:10}
+    key-size: ${CERT_KEY_SIZE:2048} # 2048 (standard), 4096 (higher security, slower TLS handshake)
+    subject:
+      country: ${CERT_SUBJECT_COUNTRY:UK}
+      state: ${CERT_SUBJECT_STATE:South Yorkshire}
+      locality: ${CERT_SUBJECT_LOCALITY:Sheffield}
+      organization: ${CERT_SUBJECT_ORG:Acme Digital Solutions Ltd}
+      organizational-unit: ${CERT_SUBJECT_OU:Platform Engineering}
+      common-name: ${CERT_SUBJECT_CN:api.acme-digital.co.uk}
+      # Alternative Names (DNS), comma-separated
+      alt-names: ${CERT_SUBJECT_ALT_NAMES:api.acme-digital.co.uk,api.internal.acme-digital.co.uk}
+    # Bootstrap detection: OID marker in certificate SANs
+    bootstrap-oid: ${BOOTSTRAP_OID:1.3.6.1.4.1.32473.1.1}
+    intermediate:
+      min-valid-days: ${CERT_INTERMEDIATE_MIN_VALID_DAYS:14}
+    destination:
+      # Base directory path where all certificate files will be written
+      path: ${CERT_DEST_PATH:/home/developer/test-secrets/}
+      # Filenames for PKCS12 keystore and truststore
+      keystore-file: ${CERT_DEST_KEYSTORE_FILE:keystore.p12}
+      truststore-file: ${CERT_DEST_TRUSTSTORE_FILE:truststore.p12}
+      # Passwords for PKCS12 keystore and truststore (if not set, resolved from Vault or auto-generated)
+      keystore-password: ${CERT_DEST_KEYSTORE_PASSWORD:}
+      truststore-password: ${CERT_DEST_TRUSTSTORE_PASSWORD:}
+      # File names for generated passwords (will be stored in the same directory as the keystore/truststore)
+      keystore-password-file: ${CERT_DEST_KEYSTORE_PASSWORD_FILE:keystore.password}
+      truststore-password-file: ${CERT_DEST_TRUSTSTORE_PASSWORD_FILE:truststore.password}
+      # Alias for the identity key in the keystore
+      keystore-alias: ${CERT_DEST_KEYSTORE_ALIAS:federator}
+
+resilience4j:
+  retry:
+    instances:
+      management-node:
+        max-attempts: ${RESILIENCE4J_MN_RETRY_MAX_ATTEMPTS:3}
+        wait-duration: ${RESILIENCE4J_MN_RETRY_WAIT:500ms}
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: ${RESILIENCE4J_MN_RETRY_MULTIPLIER:2}
+        retry-exceptions:
+          - uk.gov.dbt.ndtp.federator.certificate.manager.exception.ManagementNodeException
+      vault:
+        max-attempts: ${RESILIENCE4J_VAULT_RETRY_MAX_ATTEMPTS:3}
+        wait-duration: ${RESILIENCE4J_VAULT_RETRY_WAIT:500ms}
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: ${RESILIENCE4J_VAULT_RETRY_MULTIPLIER:2}
+        retry-exceptions:
+          - uk.gov.dbt.ndtp.federator.certificate.manager.exception.VaultException
+      oauth2:
+        max-attempts: ${RESILIENCE4J_OAUTH2_RETRY_MAX_ATTEMPTS:3}
+        wait-duration: ${RESILIENCE4J_OAUTH2_RETRY_WAIT:500ms}
+        enable-exponential-backoff: true
+        exponential-backoff-multiplier: ${RESILIENCE4J_OAUTH2_RETRY_MULTIPLIER:2}
+        retry-exceptions:
+          - uk.gov.dbt.ndtp.federator.certificate.manager.exception.OAuth2TokenException
+  circuitbreaker:
+    instances:
+      management-node:
+        failure-rate-threshold: ${RESILIENCE4J_MN_CB_FAILURE_RATE:50}
+        sliding-window-size: ${RESILIENCE4J_MN_CB_WINDOW_SIZE:10}
+        sliding-window-type: COUNT_BASED
+        minimum-number-of-calls: ${RESILIENCE4J_MN_CB_MIN_CALLS:10}
+        permitted-number-of-calls-in-half-open-state: ${RESILIENCE4J_MN_CB_HALF_OPEN_CALLS:3}
+        wait-duration-in-open-state: ${RESILIENCE4J_MN_CB_WAIT_OPEN:10s}
+      vault:
+        failure-rate-threshold: ${RESILIENCE4J_VAULT_CB_FAILURE_RATE:50}
+        sliding-window-size: ${RESILIENCE4J_VAULT_CB_WINDOW_SIZE:10}
+        sliding-window-type: COUNT_BASED
+        minimum-number-of-calls: ${RESILIENCE4J_VAULT_CB_MIN_CALLS:10}
+        permitted-number-of-calls-in-half-open-state: ${RESILIENCE4J_VAULT_CB_HALF_OPEN_CALLS:3}
+        wait-duration-in-open-state: ${RESILIENCE4J_VAULT_CB_WAIT_OPEN:10s}
+      oauth2:
+        failure-rate-threshold: ${RESILIENCE4J_OAUTH2_CB_FAILURE_RATE:50}
+        sliding-window-size: ${RESILIENCE4J_OAUTH2_CB_WINDOW_SIZE:10}
+        sliding-window-type: COUNT_BASED
+        minimum-number-of-calls: ${RESILIENCE4J_OAUTH2_CB_MIN_CALLS:10}
+        permitted-number-of-calls-in-half-open-state: ${RESILIENCE4J_OAUTH2_CB_HALF_OPEN_CALLS:3}
+        wait-duration-in-open-state: ${RESILIENCE4J_OAUTH2_CB_WAIT_OPEN:10s}
+
+# Logging Configuration
+logging:
+  level:
+    org.springframework.security: ${LOG_LEVEL_SPRING_SECURITY:DEBUG}
+    uk.gov.dbt.ndtp.federator.certificate.manager: ${LOG_LEVEL_APP:DEBUG}
+    io.github.resilience4j: ${LOG_LEVEL_RESILIENCE4J:DEBUG}
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [%X{clientId}] - %msg%n"
+    file: "%d{yyyy-MM-dd HH:mm:ss.SSS} [%thread] %-5level %logger{36} [%X{clientId}] - %msg%n"
