@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+    <url>
+         <loc>https://docs.ndtp.co.uk/trigger/architecture/</loc>
+         <lastmod>2026-03-26</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.ndtp.co.uk/trigger/certificate-lifecycle/</loc>
+         <lastmod>2026-03-26</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.ndtp.co.uk/trigger/configuration/</loc>
+         <lastmod>2026-03-26</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.ndtp.co.uk/trigger/security/</loc>
+         <lastmod>2026-03-26</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.ndtp.co.uk/trigger/third-party-notices/</loc>
+         <lastmod>2026-03-26</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.ndtp.co.uk/trigger/vault-integration/</loc>
+         <lastmod>2026-03-26</lastmod>
+    </url>
+    <url>
+         <loc>https://docs.ndtp.co.uk/trigger/smoke-tests/one-to-one/</loc>
+         <lastmod>2026-03-26</lastmod>
+    </url>
+</urlset>

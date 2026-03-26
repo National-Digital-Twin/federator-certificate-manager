@@ -1,5 +1,12 @@
 [
   {
+    "version": "trigger",
+    "title": "trigger",
+    "aliases": [
+      "latest"
+    ]
+  },
+  {
     "version": "develop",
     "title": "develop",
     "aliases": []
