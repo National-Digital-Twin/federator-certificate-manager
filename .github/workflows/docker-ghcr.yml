@@ -98,7 +98,22 @@ jobs:
         env:
           IMAGE_TAG: ${{ inputs.image_tag }}
         run: |
-          ./.github/actions/docker-tags.sh "ghcr.io/${REPO}/federator-certificate-manager" "${IMAGE_TAG}"
+          SOURCE_IMAGE="ghcr.io/${REPO}/federator-certificate-manager:staged"
+          TARGET_IMAGE="ghcr.io/${REPO}/federator-certificate-manager"
+          IFS=',' read -r -a TAGS <<< "${IMAGE_TAG}"
+
+          for RAW_TAG in "${TAGS[@]}"; do
+            TAG="$(echo "${RAW_TAG}" | xargs)"
+            if [[ -z "${TAG}" ]]; then
+              continue
+            fi
+            if [[ "${TAG}" == "staged" ]]; then
+              echo "Invalid image tag: staged is reserved"
+              exit 1
+            fi
+            docker tag "${SOURCE_IMAGE}" "${TARGET_IMAGE}:${TAG}"
+          done
+
           docker rmi ghcr.io/${REPO}/federator-certificate-manager:staged
 
       - name: Push Server Image
