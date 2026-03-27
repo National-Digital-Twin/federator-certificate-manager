@@ -2,13 +2,18 @@
   {
     "version": "trigger",
     "title": "trigger",
-    "aliases": [
-      "latest"
-    ]
+    "aliases": []
   },
   {
     "version": "develop",
     "title": "develop",
     "aliases": []
+  },
+  {
+    "version": "0.90.x",
+    "title": "0.90.x",
+    "aliases": [
+      "latest"
+    ]
   }
 ]
