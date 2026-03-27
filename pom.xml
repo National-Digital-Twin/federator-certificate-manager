@@ -52,7 +52,7 @@
     <plugin.cyclonedx>2.9.1</plugin.cyclonedx>
     <jacoco-maven-plugin.version>0.8.13</jacoco-maven-plugin.version>
     <modelmapper.version>3.2.0</modelmapper.version>
-    <mockito-junit-jupiter.version>5.10.0</mockito-junit-jupiter.version>
+    <mockito-junit-jupiter.version>5.23.0</mockito-junit-jupiter.version>
     <bouncycastle.version>1.83</bouncycastle.version>
   </properties>
   <dependencyManagement>
